@@ -1,10 +1,11 @@
-use crate::lexer::Lexer;
+use crate::lexer::{Lexer, Token, TokenType};
 
 mod lexer;
 
 fn main() {
     let mut l  = Lexer::new("x + y");
-    for token in l.iter() {
-        println!("{:?}", token);
+    let tokens: Vec<Token> = l.iter().map(|s| Token::new(TokenType::ILLEGAL, String::from(s))).collect();
+    for token in tokens {
+        println!("{}", token.literal);
     }
 }
