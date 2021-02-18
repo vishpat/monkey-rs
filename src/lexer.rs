@@ -74,12 +74,12 @@ pub struct LexerIterator<'a> {
 }
 
 impl<'a> Iterator for LexerIterator<'a> {
-    type Item = &'a Token;
+    type Item = &'a str;
 
-    fn next(&mut self) -> Option<&'a Token> {
+    fn next(&mut self) -> Option<&'a str> {
         self.index += 1;
-
-        if self.index < self.lexer.input.len() {
+        if self.index <= self.lexer.input.len() {
+            Some(&self.lexer.input[self.index - 1..self.index])
         } else {
             None
         }
