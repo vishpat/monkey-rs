@@ -1,4 +1,48 @@
-#[derive(Debug)]
+pub enum TokenType {
+    ILLEGAL,
+    EOF,
+
+    // Identifiers + Literals
+    IDENT(String),
+    INT(usize),
+
+    // Operators
+    ASSIGN(char),
+    PLUS(char),
+
+    // Delimiters
+    COMMA(char),
+    SEMICOLON(char),
+
+    LPAREN(char),
+    RPAREN(char),
+    LBRACE(char),
+    RBRACE(char),
+
+    // Keywords
+    FUNCION(String),
+    LET(String),
+    TRUE(String),
+    FALSE(String),
+    IF(String),
+    ELSE(String),
+    RETURN(String),
+}
+
+pub struct Token {
+    pub token_type: TokenType,
+    pub literal: String,
+}
+
+impl Token {
+    pub fn new(token_type: TokenType, literal: String) -> Token {
+        Token {
+            token_type,
+            literal,
+        }
+    }
+}
+
 pub struct Lexer {
     input: String,
     position: usize,
@@ -8,11 +52,37 @@ pub struct Lexer {
 
 impl Lexer {
     pub fn new(input: &str) -> Box<Lexer> {
-        Box::new(Lexer{
+        Box::new(Lexer {
             input: String::from(input),
             position: 0,
             read_position: 0,
-            ch: 0
+            ch: 0,
         })
     }
+
+    pub fn iter(&self) -> LexerIterator {
+        LexerIterator {
+            index: 0,
+            lexer: &self,
+        }
+    }
 }
+
+pub struct LexerIterator<'a> {
+    index: usize,
+    lexer: &'a Lexer,
+}
+
+impl<'a> Iterator for LexerIterator<'a> {
+    type Item = &'a Token;
+
+    fn next(&mut self) -> Option<&'a Token> {
+        self.index += 1;
+
+        if self.index < self.lexer.input.len() {
+        } else {
+            None
+        }
+    }
+}
+

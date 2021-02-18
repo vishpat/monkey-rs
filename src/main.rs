@@ -3,6 +3,8 @@ use crate::lexer::Lexer;
 mod lexer;
 
 fn main() {
-    let l  = Lexer::new("x+y");
-    println!("Lexer {:?}", l);
+    let mut l  = Lexer::new("x+y");
+    for token in l.iter() {
+        println!("{:?}", token.literal);
+    }
 }
