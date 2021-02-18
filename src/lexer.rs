@@ -129,6 +129,7 @@ pub struct LexerIterator<'a> {
 impl<'a> Iterator for LexerIterator<'a> {
     type Item = &'a str;
 
+
     fn next(&mut self) -> Option<&'a str> {
         let input = &self.lexer.input;
         let size = input.len();
@@ -143,7 +144,8 @@ impl<'a> Iterator for LexerIterator<'a> {
 
         let start = self.index;
         if input.chars().nth(self.index).unwrap().is_alphabetic() {
-            while self.index < size && input.chars().nth(self.index).unwrap().is_alphanumeric() {
+            while self.index < size && (input.chars().nth(self.index).unwrap().is_alphanumeric() ||
+                                        input.chars().nth(self.index).unwrap() == '_') {
                 self.index += 1;
             }
             self.index -= 1;

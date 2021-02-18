@@ -2,7 +2,7 @@ use crate::lexer::{Lexer, Token, TokenType};
 
 mod lexer;
 
-const test_str: &str = "let five = 5;";
+const test_str: &str = "let five_x = 5; let size_y = 6";
 
 
 fn main() {
