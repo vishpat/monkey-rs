@@ -1,3 +1,8 @@
+use crate::lexer::Lexer;
+
+mod lexer;
+
 fn main() {
-    println!("Hello, world!");
+    let l  = Lexer::new("x+y");
+    println!("Lexer {:?}", l);
 }

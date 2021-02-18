@@ -3,29 +3,31 @@ enum TokenType {
     EOF,
 
     // Identifiers + Literals
-    IDENT,
-    INT,
+    IDENT(String),
+    INT(usize),
 
     // Operators
-    ASSIGN,
-    PLUS,
+    ASSIGN(char),
+    PLUS(char),
 
     // Delimiters
-    COMMA,
-    SEMICOLON,
+    COMMA(char),
+    SEMICOLON(char),
 
-    LPAREN,
-    RPAREN,
-    LBRACE,
-    RBRACE,
+    LPAREN(char),
+    RPAREN(char),
+    LBRACE(char),
+    RBRACE(char),
 
     // Keywords
-    FUNCION,
-    LET
+    FUNCION(String),
+    LET(String)
 }
 
 
 struct Token {
+    pub token_type: TokenType,
     pub literal: String,
-    pub token_type: TokenType
+    pub file: String,
+    pub lineno: usize,
 }
