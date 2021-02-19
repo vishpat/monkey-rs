@@ -23,8 +23,4 @@ const TEST_STR: &str = "
 ";
 
 fn main() {
-    let mut lexer = lexer::Lexer::new(TEST_STR);
-    for t in lexer.iter() {
-        println!("{:?}", t);
-    }
 }

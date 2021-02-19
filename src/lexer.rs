@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Token {
     Illegal,
     Eof,
@@ -39,129 +39,124 @@ pub enum Token {
 }
 
 pub struct Lexer {
-    input: String,
+    tokens: Vec<Token>
 }
 
 impl Lexer {
     pub fn new(input: &str) -> Box<Lexer> {
+        let mut tokens: Vec<Token> = vec![];
+
+        let size = input.len();
+        let mut index = 0;
+
+        while index < size {
+
+            while index < size && input.chars().nth(index).unwrap().is_ascii_whitespace() {
+                index += 1;
+            }
+
+            if index >= size {
+                break
+            }
+
+
+            let start = index;
+
+            let mut token = match input.chars().nth(index).unwrap() {
+                '=' => {
+                    if size - index > 1 {
+                        match input.chars().nth(index + 1).unwrap() {
+                            '=' => {
+                                index += 1;
+                                Token::Eq
+                            }
+                            _ => Token::Assign
+                        }
+                    } else {
+                        Token::Assign
+                    }
+                }
+                ';' => Token::Semicolon,
+                '(' => Token::LParen,
+                ')' => Token::RParen,
+                ',' => Token::Comma,
+                '+' => Token::Plus,
+                '{' => Token::LBrace,
+                '}' => Token::RBrace,
+                '>' => Token::Gt,
+                '<' => Token::Lt,
+                '*' => Token::Asterik,
+                '-' => Token::Minus,
+                '/' => Token::Slash,
+                '!' => {
+                    if size - index > 1 {
+                        match input.chars().nth(index + 1).unwrap() {
+                            '=' => {
+                                index += 1;
+                                Token::NotEq
+                            }
+                            _ => Token::Bang
+                        }
+                    } else {
+                        Token::Bang
+                    }
+                }
+                _ => Token::Illegal
+            };
+
+            if token != Token::Illegal {
+                index += 1;
+                tokens.push(token);
+                continue;
+            }
+
+            // Identifiers and keywords
+            if input.chars().nth(index).unwrap().is_alphabetic() {
+                while index < size && (input.chars().nth(index).unwrap().is_alphanumeric() ||
+                    input.chars().nth(index).unwrap() == '_') {
+                    index += 1;
+                }
+
+                if start < index {
+                    let s = match &input[start..index] {
+                        "let" => Token::Let,
+                        "true" => Token::True,
+                        "false" => Token::False,
+                        "if" => Token::If,
+                        "else" => Token::Else,
+                        "return" => Token::Return,
+                        "fn" => Token::Function,
+                        _ => Token::Ident(input[start..index].to_string())
+                    };
+                    tokens.push(s);
+                }
+            }
+
+            // Numbers
+            if input.chars().nth(index).unwrap().is_ascii_digit() {
+                while index < size && (input.chars().nth(index).unwrap().is_ascii_digit()) {
+                    index += 1;
+                }
+
+                if start < index {
+                    tokens.push(Token::Int(input[start..index].to_string().parse::<usize>().unwrap()));
+                }
+            }
+        }
+
+        tokens.reverse();
+
         Box::new(Lexer {
-            input: String::from(input),
+            tokens
         })
     }
 
-    pub fn iter(&self) -> LexerIterator {
-        LexerIterator {
-            index: 0,
-            lexer: &self,
-        }
+    pub fn next(&mut self) -> Token {
+        self.tokens.pop().unwrap_or(Token::Eof)
     }
-}
 
-pub struct LexerIterator<'a> {
-    index: usize,
-    lexer: &'a Lexer,
-}
-
-impl<'a> Iterator for LexerIterator<'a> {
-    type Item = Token;
-
-
-    fn next(&mut self) -> Option<Token> {
-
-        let input = &self.lexer.input;
-        let size = input.len();
-
-        while self.index < size && input.chars().nth(self.index).unwrap().is_ascii_whitespace() {
-            self.index += 1;
-        }
-
-        if self.index >= size {
-            return None
-        }
-
-        let start = self.index;
-
-        let mut token = match input.chars().nth(self.index).unwrap() {
-            '=' => {
-                if size - self.index > 1 {
-                    match input.chars().nth(self.index + 1).unwrap() {
-                        '=' => {
-                            self.index += 1;
-                            Token::Eq
-                        },
-                        _ => Token::Assign
-                    }
-                } else {
-                    Token::Assign
-                }
-            },
-            ';' => Token::Semicolon,
-            '(' => Token::LParen,
-            ')' => Token::RParen,
-            ',' => Token::Comma,
-            '+' => Token::Plus,
-            '{' => Token::LBrace,
-            '}' => Token::RBrace,
-            '>'  => Token::Gt,
-            '<'  => Token::Lt,
-            '*'  => Token::Asterik,
-            '-'  => Token::Minus,
-            '/'  => Token::Slash,
-            '!'  => {
-                if size - self.index > 1 {
-                    match input.chars().nth(self.index + 1).unwrap() {
-                        '=' => {
-                            self.index += 1;
-                            Token::NotEq
-                        },
-                        _ => Token::Bang
-                    }
-                } else {
-                    Token::Bang
-                }
-            },
-            _ => Token::Illegal
-        };
-
-        if token != Token::Illegal {
-            self.index += 1;
-            return Some(token);
-        }
-
-        // Identifiers and keywords
-        if input.chars().nth(self.index).unwrap().is_alphabetic() {
-            while self.index < size && (input.chars().nth(self.index).unwrap().is_alphanumeric() ||
-                input.chars().nth(self.index).unwrap() == '_') {
-                self.index += 1;
-            }
-
-            if start < self.index {
-                let s = match &input[start..self.index] {
-                    "let" => Token::Let,
-                    "true" => Token::True,
-                    "false" => Token::False,
-                    "if" => Token::If,
-                    "else" => Token::Else,
-                    "return" => Token::Return,
-                    "fn" => Token::Function,
-                    _ => Token::Ident(input[start..self.index].to_string())
-                };
-                return Some(s);
-            }
-        }
-
-        // Numbers
-        if input.chars().nth(self.index).unwrap().is_ascii_digit() {
-            while self.index < size && (input.chars().nth(self.index).unwrap().is_ascii_digit()) {
-                self.index += 1;
-            }
-
-            if start < self.index {
-                return Some(Token::Int(input[start..self.index].to_string().parse::<usize>().unwrap()))
-            }
-        }
-
-       panic!("Invalid character found at {} {}", self.lexer.input, self.index);
+    pub fn peek(&mut self) -> Token {
+        self.tokens.last().cloned().unwrap_or(Token::Eof)
     }
 }
 
@@ -192,10 +187,8 @@ mod tests {
     ";
 
 
-
     #[test]
     fn test_tokens() {
-
         let test_token_vec: Vec<Token> = vec![
             Token::Let,
             Token::Ident(String::from("five")),
@@ -274,16 +267,11 @@ mod tests {
         ];
 
         let mut lexer = Lexer::new(TEST_STR);
-        let mut tokens: Vec<Token> = lexer.iter().collect();
-        tokens.push(Token::Eof);
+        let mut idx = 1;
 
-        assert_eq!(tokens.len(), test_token_vec.len());
-
-        for i in 0..tokens.len() {
-            let t1 = &tokens[i];
-            let t2 = &test_token_vec[i];
-            println!("{}", i);
-            assert_eq!(t1, t2);
+        for test_token in test_token_vec.iter() {
+            let token = lexer.next();
+            assert_eq!(token, *test_token);
         }
     }
 }
