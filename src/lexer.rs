@@ -143,12 +143,28 @@ impl<'a> Iterator for LexerIterator<'a> {
         }
 
         let start = self.index;
+
+        // Identifiers and keywords
         if input.chars().nth(self.index).unwrap().is_alphabetic() {
             while self.index < size && (input.chars().nth(self.index).unwrap().is_alphanumeric() ||
                                         input.chars().nth(self.index).unwrap() == '_') {
                 self.index += 1;
             }
-            self.index -= 1;
+
+            if start < self.index {
+                return Some(&input[start..self.index])
+            }
+        }
+
+        // Numbers
+        if input.chars().nth(self.index).unwrap().is_ascii_digit() {
+            while self.index < size && (input.chars().nth(self.index).unwrap().is_ascii_digit()) {
+                self.index += 1;
+            }
+
+            if start < self.index {
+                return Some(&input[start..self.index])
+            }
         }
 
         self.index += 1;
