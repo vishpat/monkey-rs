@@ -1,11 +1,11 @@
-#[derive(PartialEq, Debug)]
-pub enum TokenType {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Token {
     Illegal,
     Eof,
 
     // Identifiers + Literals
-    Ident,
-    Int,
+    Ident(String),
+    Int(usize),
 
     // Operators
     Assign,
@@ -38,20 +38,6 @@ pub enum TokenType {
     Return,
 }
 
-pub struct Token {
-    pub tipe: TokenType,
-    pub literal: String,
-}
-
-impl Token {
-    pub fn new(token_type: TokenType, literal: String) -> Box<Token> {
-        Box::new(Token {
-            tipe: token_type,
-            literal,
-        })
-    }
-}
-
 pub struct Lexer {
     input: String,
 }
@@ -69,57 +55,6 @@ impl Lexer {
             lexer: &self,
         }
     }
-
-    fn is_number(input: &str) -> bool {
-        input.chars().all(|c| c.is_ascii_digit())
-    }
-
-    fn is_identifier(input: &str) -> bool {
-        input.chars().all(|c| c.is_alphabetic() || c == '_')
-    }
-
-    pub fn token_type(&self, input: &str) -> TokenType {
-        let ttype = match input {
-            "=" => TokenType::Assign,
-            ";" => TokenType::Semicolon,
-            "(" => TokenType::LParen,
-            ")" => TokenType::RParen,
-            "," => TokenType::Comma,
-            "+" => TokenType::Plus,
-            "{" => TokenType::LBrace,
-            "}" => TokenType::RBrace,
-            "fn" => TokenType::Function,
-            ">"  => TokenType::Gt,
-            "<"  => TokenType::Lt,
-            "*"  => TokenType::Asterik,
-            "-"  => TokenType::Minus,
-            "/"  => TokenType::Slash,
-            "==" => TokenType::Eq,
-            "!=" => TokenType::NotEq,
-            "!" => TokenType::Bang,
-            "let" => TokenType::Let,
-            "true" => TokenType::True,
-            "false" => TokenType::False,
-            "if" => TokenType::If,
-            "else" => TokenType::Else,
-            "return" => TokenType::Return,
-            _ => TokenType::Illegal,
-        };
-
-        if ttype != TokenType::Illegal {
-            return ttype;
-        }
-
-        if Lexer::is_identifier(input) {
-            return TokenType::Ident;
-        }
-
-        if Lexer::is_number(input) {
-            return TokenType::Int;
-        }
-
-        return TokenType::Illegal;
-    }
 }
 
 pub struct LexerIterator<'a> {
@@ -128,10 +63,11 @@ pub struct LexerIterator<'a> {
 }
 
 impl<'a> Iterator for LexerIterator<'a> {
-    type Item = &'a str;
+    type Item = Token;
 
 
-    fn next(&mut self) -> Option<&'a str> {
+    fn next(&mut self) -> Option<Token> {
+
         let input = &self.lexer.input;
         let size = input.len();
 
@@ -140,10 +76,33 @@ impl<'a> Iterator for LexerIterator<'a> {
         }
 
         if self.index >= size {
-            return None;
+            return None
         }
 
         let start = self.index;
+
+        let mut token = match input.chars().nth(self.index).unwrap() {
+            '=' => Token::Eq,
+            ';' => Token::Semicolon,
+            '(' => Token::LParen,
+            ')' => Token::RParen,
+            ',' => Token::Comma,
+            '+' => Token::Plus,
+            '{' => Token::LBrace,
+            '}' => Token::RBrace,
+            '>'  => Token::Gt,
+            '<'  => Token::Lt,
+            '*'  => Token::Asterik,
+            '-'  => Token::Minus,
+            '/'  => Token::Slash,
+            '!'  => Token::Bang,
+            _ => Token::Illegal
+        };
+
+        if token != Token::Illegal {
+            self.index += 1;
+            return Some(token);
+        }
 
         // Identifiers and keywords
         if input.chars().nth(self.index).unwrap().is_alphabetic() {
@@ -153,7 +112,17 @@ impl<'a> Iterator for LexerIterator<'a> {
             }
 
             if start < self.index {
-                return Some(&input[start..self.index]);
+                let s = match &input[start..self.index] {
+                    "let" => Token::Let,
+                    "true" => Token::True,
+                    "false" => Token::False,
+                    "if" => Token::If,
+                    "else" => Token::Else,
+                    "return" => Token::Return,
+                    "fn" => Token::Function,
+                    _ => Token::Ident(input[start..self.index].to_string())
+                };
+                return Some(s);
             }
         }
 
@@ -164,7 +133,7 @@ impl<'a> Iterator for LexerIterator<'a> {
             }
 
             if start < self.index {
-                return Some(&input[start..self.index]);
+                return Some(Token::Int(input[start..self.index].to_string().parse::<usize>().unwrap()))
             }
         }
 
@@ -174,11 +143,15 @@ impl<'a> Iterator for LexerIterator<'a> {
             (input.chars().nth(self.index).unwrap() == '=' ||
                 input.chars().nth(self.index).unwrap() == '!') {
             self.index += 2;
-            return Some(&input[start..self.index]);
+
+            return match &input[start..self.index] {
+                "==" => Some(Token::Eq),
+                "!=" => Some(Token::NotEq),
+                _ => panic!("Invalid string {}", &input[start..self.index])
+            }
         }
 
-        self.index += 1;
-        return Some(&input[start..self.index]);
+       panic!("Invalid character found at {} {}", self.lexer.input, self.index);
     }
 }
 
