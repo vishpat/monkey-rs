@@ -167,6 +167,16 @@ impl<'a> Iterator for LexerIterator<'a> {
             }
         }
 
+        // == !=
+        if size - start >= 2 &&
+            input.chars().nth(self.index + 1).unwrap() == '=' &&
+            (input.chars().nth(self.index).unwrap() == '=' ||
+            input.chars().nth(self.index).unwrap() == '!') {
+
+            self.index += 2;
+            return Some(&input[start..self.index])
+        }
+
         self.index += 1;
         return Some(&input[start..self.index]);
     }
