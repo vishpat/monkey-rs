@@ -1,4 +1,4 @@
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum TokenType {
     Illegal,
     Eof,
@@ -71,11 +71,11 @@ impl Lexer {
     }
 
     fn is_number(input: &str) -> bool {
-        false
+        input.chars().all(|c| c.is_ascii_digit())
     }
 
     fn is_identifier(input: &str) -> bool {
-        false
+        input.chars().all(|c| c.is_alphabetic() || c == '_')
     }
 
     pub fn token_type(&self, input: &str) -> TokenType {
@@ -92,9 +92,11 @@ impl Lexer {
             ">"  => TokenType::Gt,
             "<"  => TokenType::Lt,
             "*"  => TokenType::Asterik,
+            "-"  => TokenType::Minus,
             "/"  => TokenType::Slash,
             "==" => TokenType::Eq,
             "!=" => TokenType::NotEq,
+            "!" => TokenType::Bang,
             "let" => TokenType::Let,
             "true" => TokenType::True,
             "false" => TokenType::False,
@@ -231,12 +233,12 @@ mod tests {
             Token::new(TokenType::Comma, String::from(",")),
             Token::new(TokenType::Ident, String::from("y")),
             Token::new(TokenType::RParen, String::from(")")),
-            Token::new(TokenType::LBrace, String::from("(")),
+            Token::new(TokenType::LBrace, String::from("{")),
             Token::new(TokenType::Ident, String::from("x")),
             Token::new(TokenType::Plus, String::from("+")),
             Token::new(TokenType::Ident, String::from("y")),
             Token::new(TokenType::Semicolon, String::from(";")),
-            Token::new(TokenType::RBrace, String::from("))")),
+            Token::new(TokenType::RBrace, String::from("}")),
             Token::new(TokenType::Semicolon, String::from(";")),
             Token::new(TokenType::Let, String::from("let")),
             Token::new(TokenType::Ident, String::from("result")),
@@ -266,17 +268,17 @@ mod tests {
             Token::new(TokenType::Lt, String::from("<")),
             Token::new(TokenType::Int, String::from("10")),
             Token::new(TokenType::RParen, String::from(")")),
-            Token::new(TokenType::LBrace, String::from("Token::new(")),
+            Token::new(TokenType::LBrace, String::from("{")),
             Token::new(TokenType::Return, String::from("return")),
             Token::new(TokenType::True, String::from("true")),
             Token::new(TokenType::Semicolon, String::from(";")),
-            Token::new(TokenType::RBrace, String::from("))")),
+            Token::new(TokenType::RBrace, String::from("}")),
             Token::new(TokenType::Else, String::from("else")),
-            Token::new(TokenType::LBrace, String::from("Token::new(")),
+            Token::new(TokenType::LBrace, String::from("{")),
             Token::new(TokenType::Return, String::from("return")),
             Token::new(TokenType::False, String::from("false")),
             Token::new(TokenType::Semicolon, String::from(";")),
-            Token::new(TokenType::RBrace, String::from("))")),
+            Token::new(TokenType::RBrace, String::from("}")),
             Token::new(TokenType::Int, String::from("10")),
             Token::new(TokenType::Eq, String::from("==")),
             Token::new(TokenType::Int, String::from("10")),
@@ -296,5 +298,12 @@ mod tests {
         tokens.push(Token::new(TokenType::Eof, String::from("")));
 
         assert_eq!(tokens.len(), test_token_vec.len());
+
+        for i in 0..tokens.len() {
+            let t1 = &tokens[i];
+            let t2 = &test_token_vec[i];
+            assert_eq!(t1.literal, t2.literal);
+            assert_eq!(t1.tipe, t2.tipe);
+        }
     }
 }
