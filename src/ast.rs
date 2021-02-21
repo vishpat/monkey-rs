@@ -9,28 +9,28 @@ trait Expression {}
 // Let
 struct LetStatement {
     id: Identifier,
-    expr: Expression,
+    expr: dyn Expression,
 }
 
 impl Statement for LetStatement {}
 
 // Return
 struct ReturnStatement {
-    expr: Expression
+    expr: dyn Expression
 }
 
 impl Statement for ReturnStatement{}
 
 // Expression
 struct ExpressionStatement {
-    expr: Expression
+    expr: dyn Expression
 }
 
 impl Statement for ExpressionStatement{}
 
 // Block
 struct BlockStatement {
-    block: Vec<Statement>
+    block: Vec<dyn Statement>
 }
 
 impl Statement for BlockStatement{}
@@ -62,7 +62,7 @@ impl Expression for Integer;
 struct PrefixExpression
 {
     op: String,
-    expr: Expression,
+    expr: dyn Expression,
 }
 
 impl Expression for PrefixExpression;
@@ -70,9 +70,9 @@ impl Expression for PrefixExpression;
 // Infix Expression
 struct InfixExpression
 {
-    left: Expression,
+    left: dyn Expression,
     op: String,
-    right: Expression
+    right: dyn Expression
 }
 
 impl Expression for InfixExpression;
@@ -80,7 +80,7 @@ impl Expression for InfixExpression;
 // If Expression
 
 struct IfExpression {
-    cond: Expression,
+    cond: dyn Expression,
     true_block: BlockStatement,
     false_block: BlockStatement,
 }
@@ -99,8 +99,8 @@ impl Expression for FunctionLiteral{}
 // Call Expression
 
 struct CallExpression {
-    function: Expression,
-    parameters: Vec<Expression>,
+    function: dyn Expression,
+    parameters: Vec<dyn Expression>,
 }
 
 impl Expression for CallExpression{}

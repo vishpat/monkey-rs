@@ -1,4 +1,5 @@
 mod lexer;
+mod ast;
 
 const TEST_STR: &str = "
     let five = 5;
