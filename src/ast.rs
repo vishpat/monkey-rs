@@ -1,39 +1,43 @@
-use lexer::Token;
+use crate::lexer::Token;
 
 trait Statement {}
 
 trait Expression {}
 
+struct Program<'a> {
+    statements: Vec<Box<&'a dyn Statement>>
+}
+
 // Statements
 
 // Let
-struct LetStatement {
-    id: Identifier,
-    expr: dyn Expression,
+struct LetStatement<'a> {
+    id: &'a Identifier,
+    expr: &'a dyn Expression,
 }
 
-impl Statement for LetStatement {}
+impl Statement for LetStatement<'_>{}
 
 // Return
-struct ReturnStatement {
-    expr: dyn Expression
+struct ReturnStatement<'a> {
+    expr: &'a dyn Expression
 }
 
-impl Statement for ReturnStatement{}
+impl Statement for ReturnStatement<'_>{}
 
 // Expression
-struct ExpressionStatement {
-    expr: dyn Expression
+struct ExpressionStatement<'a> {
+    expr: &'a dyn Expression
 }
 
-impl Statement for ExpressionStatement{}
+impl Statement for ExpressionStatement<'_>{}
 
 // Block
-struct BlockStatement {
-    block: Vec<dyn Statement>
+struct BlockStatement<'a> {
+    block: Vec<Box<&'a dyn Statement>>
 }
 
-impl Statement for BlockStatement{}
+impl Statement for BlockStatement<'_>{}
 
 // Expressions
 
@@ -49,58 +53,58 @@ struct Boolean {
     value: bool
 }
 
-impl Expression for Boolean;
+impl Expression for Boolean{}
 
 // Int
 struct Integer {
     value: usize
 }
 
-impl Expression for Integer;
+impl Expression for Integer{}
 
 // Prefix Expression
-struct PrefixExpression
+struct PrefixExpression<'a>
 {
     op: String,
-    expr: dyn Expression,
+    expr: &'a dyn Expression,
 }
 
-impl Expression for PrefixExpression;
+impl Expression for PrefixExpression<'_>{}
 
 // Infix Expression
-struct InfixExpression
+struct InfixExpression<'a>
 {
-    left: dyn Expression,
+    left: &'a dyn Expression,
     op: String,
-    right: dyn Expression
+    right: &'a dyn Expression
 }
 
-impl Expression for InfixExpression;
+impl Expression for InfixExpression<'_>{}
 
 // If Expression
 
-struct IfExpression {
-    cond: dyn Expression,
-    true_block: BlockStatement,
-    false_block: BlockStatement,
+struct IfExpression<'a> {
+    cond: Box<dyn Expression>,
+    true_block: &'a BlockStatement<'a>,
+    false_block: &'a BlockStatement<'a>,
 }
 
-impl Expression for IfExpression{}
+impl Expression for IfExpression<'_>{}
 
 // Function
 
-struct FunctionLiteral {
-    parameters: Vec<Identifier>,
-    block: BlockStatement
+struct FunctionLiteral<'a> {
+    parameters: Vec<&'a Identifier>,
+    block: &'a BlockStatement<'a>
 }
 
-impl Expression for FunctionLiteral{}
+impl Expression for FunctionLiteral<'_>{}
 
 // Call Expression
 
-struct CallExpression {
-    function: dyn Expression,
-    parameters: Vec<dyn Expression>,
+struct CallExpression<'a> {
+    function: Box<&'a dyn Expression>,
+    parameters: Vec<&'a Box<dyn Expression>>,
 }
 
-impl Expression for CallExpression{}
+impl Expression for CallExpression<'_>{}
