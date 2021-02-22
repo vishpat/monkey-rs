@@ -1,56 +1,110 @@
 use crate::lexer::Token;
+use std::ptr::write_bytes;
 
 trait Statement {}
 
+impl std::fmt::Display for dyn Statement {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(fmt, "")
+    }
+}
+
 trait Expression {}
 
-struct Program<'a> {
-    statements: Vec<Box<&'a dyn Statement>>
+impl std::fmt::Display for dyn Expression {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(fmt, "")
+    }
+}
+
+struct Program {
+    statements: Vec<Box<dyn Statement>>
 }
 
 // Statements
 
 // Let
-struct LetStatement<'a> {
-    id: &'a Identifier,
-    expr: &'a dyn Expression,
+struct LetStatement {
+    id: Box<Identifier>,
+    expr: Box<dyn Expression>,
 }
 
-impl Statement for LetStatement<'_>{}
+impl std::fmt::Display for LetStatement {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(fmt, "{} = {};", self.id, self.expr)
+    }
+}
+
+impl Statement for LetStatement{}
 
 // Return
-struct ReturnStatement<'a> {
-    expr: &'a dyn Expression
+struct ReturnStatement {
+    expr: Box<dyn Expression>
 }
 
-impl Statement for ReturnStatement<'_>{}
+impl std::fmt::Display for ReturnStatement {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        write!(fmt, "return {};", self.expr)
+    }
+}
+
+impl Statement for ReturnStatement{}
 
 // Expression
-struct ExpressionStatement<'a> {
-    expr: &'a dyn Expression
+struct ExpressionStatement {
+    expr: Box<dyn Expression>
 }
 
-impl Statement for ExpressionStatement<'_>{}
+impl std::fmt::Display for ExpressionStatement {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(fmt, "{};", self.expr)
+    }
+}
+
+impl Statement for ExpressionStatement{}
 
 // Block
-struct BlockStatement<'a> {
-    block: Vec<Box<&'a dyn Statement>>
+struct BlockStatement {
+    block: Box<Vec<Box<dyn Statement>>>
 }
 
-impl Statement for BlockStatement<'_>{}
+impl std::fmt::Display for BlockStatement {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        write!(fmt, "{{");
+        for x in self.block.iter() {
+           write!(fmt, "{}", x);
+        }
+        write!(fmt, "}}")
+    }
+}
+
+impl Statement for BlockStatement{}
 
 // Expressions
 
 // Ident
 struct Identifier {
-    value: String
+    value: Box<String>
 }
+
+impl std::fmt::Display for Identifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.value)
+    }
+}
+
 
 impl Expression for Identifier {}
 
 // Bool
 struct Boolean {
     value: bool
+}
+
+impl std::fmt::Display for Boolean {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.value)
+    }
 }
 
 impl Expression for Boolean{}
@@ -60,51 +114,90 @@ struct Integer {
     value: usize
 }
 
+impl std::fmt::Display for Integer {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.value)
+    }
+}
+
 impl Expression for Integer{}
 
 // Prefix Expression
-struct PrefixExpression<'a>
+struct PrefixExpression
 {
-    op: String,
-    expr: &'a dyn Expression,
+    op: Box<String>,
+    expr: Box<dyn Expression>,
 }
 
-impl Expression for PrefixExpression<'_>{}
+impl std::fmt::Display for PrefixExpression {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(fmt, "{}{}", self.op, self.expr)
+    }
+}
+
+impl Expression for PrefixExpression{}
+
 
 // Infix Expression
-struct InfixExpression<'a>
+struct InfixExpression
 {
-    left: &'a dyn Expression,
-    op: String,
-    right: &'a dyn Expression
+    left: Box<dyn Expression>,
+    op: Box<String>,
+    right: Box<dyn Expression>
 }
 
-impl Expression for InfixExpression<'_>{}
+impl std::fmt::Display for InfixExpression {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        write!(fmt, "{} {} {};", self.left, self.op, self.right)
+    }
+}
+
+impl Expression for InfixExpression{}
 
 // If Expression
-
-struct IfExpression<'a> {
+struct IfExpression {
     cond: Box<dyn Expression>,
-    true_block: &'a BlockStatement<'a>,
-    false_block: &'a BlockStatement<'a>,
+    true_block: Box<BlockStatement>,
+    false_block: Box<BlockStatement>,
 }
 
-impl Expression for IfExpression<'_>{}
+impl std::fmt::Display for IfExpression {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        write!(fmt, "if ({}) {} else {};", self.cond, self.true_block, self.false_block)
+    }
+}
+
+impl Expression for IfExpression{}
 
 // Function
-
-struct FunctionLiteral<'a> {
-    parameters: Vec<&'a Identifier>,
-    block: &'a BlockStatement<'a>
+struct FunctionLiteral {
+    name: Identifier,
+    parameters: Box<Vec<Identifier>>,
+    block: Box<BlockStatement>
 }
 
-impl Expression for FunctionLiteral<'_>{}
+impl std::fmt::Display for FunctionLiteral {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        write!(fmt, "fn {} {}", self.name, self.block)
+    }
+}
+
+impl Expression for FunctionLiteral{}
 
 // Call Expression
-
-struct CallExpression<'a> {
-    function: Box<&'a dyn Expression>,
-    parameters: Vec<&'a Box<dyn Expression>>,
+struct CallExpression {
+    function: Box<dyn Expression>,
+    parameters: Box<Vec<Box<dyn Expression>>>,
 }
 
-impl Expression for CallExpression<'_>{}
+impl std::fmt::Display for CallExpression {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(fmt, "{}()", self.function);
+        for x in self.parameters.iter() {
+            write!(fmt, "{}", x);
+        }
+        write!(fmt, "")
+    }
+}
+
+impl Expression for CallExpression{}
