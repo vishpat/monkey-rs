@@ -1,21 +1,8 @@
 use crate::lexer::Token;
 use std::ptr::write_bytes;
 
-trait Statement {}
-
-impl std::fmt::Display for dyn Statement {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(fmt, "")
-    }
-}
-
-trait Expression {}
-
-impl std::fmt::Display for dyn Expression {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(fmt, "")
-    }
-}
+trait Statement: std::fmt::Display {}
+trait Expression: std::fmt::Display {}
 
 struct Program {
     statements: Vec<Box<dyn Statement>>
@@ -204,11 +191,16 @@ impl Expression for CallExpression{}
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::Identifier;
+    use crate::ast::{Identifier, InfixExpression};
 
     #[test]
     fn test_display_identifier() {
-        let identifier = Box::new(Identifier{value:Box::new(String::from("str"))});
-        println!("{}", identifier);
+        let x =
+            Box::new(Identifier{value:Box::new(String::from("x"))});
+        let y =
+            Box::new(Identifier{value:Box::new(String::from("y"))});
+
+        let infix_expr = Box::new(InfixExpression{left: x, op: Box::new(String::from("+")), right:y});
+        println!("{}", infix_expr);
     }
 }
