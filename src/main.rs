@@ -1,5 +1,6 @@
 mod lexer;
 mod ast;
+mod parser;
 
 const TEST_STR: &str = "
     let five = 5;

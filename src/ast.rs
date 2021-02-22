@@ -4,14 +4,14 @@ use std::ptr::write_bytes;
 trait Statement: std::fmt::Display {}
 trait Expression: std::fmt::Display {}
 
-struct Program {
+pub struct Program {
     statements: Vec<Box<dyn Statement>>
 }
 
 // Statements
 
 // Let
-struct LetStatement {
+pub struct LetStatement {
     id: Box<Identifier>,
     expr: Box<dyn Expression>,
 }
@@ -25,7 +25,7 @@ impl std::fmt::Display for LetStatement {
 impl Statement for LetStatement{}
 
 // Return
-struct ReturnStatement {
+pub struct ReturnStatement {
     expr: Box<dyn Expression>
 }
 
@@ -38,7 +38,7 @@ impl std::fmt::Display for ReturnStatement {
 impl Statement for ReturnStatement{}
 
 // Expression
-struct ExpressionStatement {
+pub struct ExpressionStatement {
     expr: Box<dyn Expression>
 }
 
@@ -51,7 +51,7 @@ impl std::fmt::Display for ExpressionStatement {
 impl Statement for ExpressionStatement{}
 
 // Block
-struct BlockStatement {
+pub struct BlockStatement {
     block: Box<Vec<Box<dyn Statement>>>
 }
 
@@ -70,7 +70,7 @@ impl Statement for BlockStatement{}
 // Expressions
 
 // Ident
-struct Identifier {
+pub struct Identifier {
     value: Box<String>
 }
 
@@ -84,7 +84,7 @@ impl std::fmt::Display for Identifier {
 impl Expression for Identifier {}
 
 // Bool
-struct Boolean {
+pub struct Boolean {
     value: bool
 }
 
@@ -97,7 +97,7 @@ impl std::fmt::Display for Boolean {
 impl Expression for Boolean{}
 
 // Int
-struct Integer {
+pub struct Integer {
     value: usize
 }
 
@@ -110,7 +110,7 @@ impl std::fmt::Display for Integer {
 impl Expression for Integer{}
 
 // Prefix Expression
-struct PrefixExpression
+pub struct PrefixExpression
 {
     op: Box<String>,
     expr: Box<dyn Expression>,
@@ -126,7 +126,7 @@ impl Expression for PrefixExpression{}
 
 
 // Infix Expression
-struct InfixExpression
+pub struct InfixExpression
 {
     left: Box<dyn Expression>,
     op: Box<String>,
@@ -142,7 +142,7 @@ impl std::fmt::Display for InfixExpression {
 impl Expression for InfixExpression{}
 
 // If Expression
-struct IfExpression {
+pub struct IfExpression {
     cond: Box<dyn Expression>,
     true_block: Box<BlockStatement>,
     false_block: Box<BlockStatement>,
@@ -157,7 +157,7 @@ impl std::fmt::Display for IfExpression {
 impl Expression for IfExpression{}
 
 // Function
-struct FunctionLiteral {
+pub struct FunctionLiteral {
     name: Identifier,
     parameters: Box<Vec<Identifier>>,
     block: Box<BlockStatement>
@@ -172,7 +172,7 @@ impl std::fmt::Display for FunctionLiteral {
 impl Expression for FunctionLiteral{}
 
 // Call Expression
-struct CallExpression {
+pub struct CallExpression {
     function: Box<dyn Expression>,
     parameters: Box<Vec<Box<dyn Expression>>>,
 }

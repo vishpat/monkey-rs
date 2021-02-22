@@ -1,3 +1,6 @@
+use std::fmt;
+use std::fmt::{Debug, Display};
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Token {
     Illegal,
@@ -37,6 +40,55 @@ pub enum Token {
     Else,
     Return,
 }
+
+fn token_str_repr(token: &Token) -> Box<String> {
+    let str_repr= match token {
+        Token::Illegal => String::from("Illegal"),
+        Token::Eof => String::from("Eof"),
+
+        // Identifiers + Literals
+        Token::Ident(s) => s.clone(),
+        Token::Int(i) => i.to_string(),
+
+        // Operators
+        Token::Assign => String::from("="),
+        Token::Plus => String::from("+"),
+        Token::Bang => String::from("!"),
+        Token::Minus => String::from("-"),
+        Token::Slash => String::from("/"),
+        Token::Asterik => String::from("*"),
+        Token::Lt => String::from("<"),
+        Token::Gt => String::from(">"),
+        Token::Eq => String::from("=="),
+        Token::NotEq => String::from("!="),
+
+        // Delimiters
+        Token::Comma => String::from("),"),
+        Token::Semicolon => String::from(";"),
+
+        Token::LParen => String::from("("),
+        Token::RParen => String::from(")"),
+        Token::LBrace => String::from("{"),
+        Token::RBrace => String::from("}"),
+
+        // Keywords
+        Token::Function => String::from("fn"),
+        Token::Let => String::from("let"),
+        Token::True => String::from("true"),
+        Token::False => String::from("false"),
+        Token::If => String::from("if"),
+        Token::Else => String::from("else"),
+        Token::Return => String::from("return"),
+    };
+    Box::new(str_repr)
+}
+
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", token_str_repr(self))
+    }
+}
+
 
 pub struct Lexer {
     tokens: Vec<Token>
