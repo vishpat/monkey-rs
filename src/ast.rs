@@ -201,3 +201,14 @@ impl std::fmt::Display for CallExpression {
 }
 
 impl Expression for CallExpression{}
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::Identifier;
+
+    #[test]
+    fn test_display_identifier() {
+        let identifier = Box::new(Identifier{value:Box::new(String::from("str"))});
+        println!("{}", identifier);
+    }
+}
