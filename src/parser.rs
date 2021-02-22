@@ -28,17 +28,58 @@ impl Parser {
         Box::new(Parser{lexer, curr_token, next_token})
     }
 
-    pub fn next(mut self) -> Token {
+    pub fn next(&mut self) -> Token {
         self.curr_token = self.next_token.clone();
         self.next_token = self.lexer.next();
-        self.curr_token
+        self.curr_token.clone()
     }
 
-    pub fn peek(self) -> Token {
+    pub fn peek(&self) -> Token {
         self.next_token.clone()
     }
 
     fn parse_program(&mut self) -> Result<Program, ParseError> {
         Err(ParseError{token: self.lexer.peek()})
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::{Identifier, InfixExpression, LetStatement};
+    use crate::lexer::{Lexer, Token};
+    use crate::parser::Parser;
+
+    const TEST_STR: &str = "
+    let five = 5;
+    let ten = 10;
+
+    let add = fn(x, y) {
+      x + y;
+    };
+
+    let result = add(five, ten);
+    !-/*5;
+    5 < 10 > 5;
+
+    if (5 < 10) {
+      return true;
+    } else {
+      return false;
+    }
+
+    10 == 10;
+    10 != 9;
+    ";
+
+    #[test]
+    fn test_parser() {
+        let lexer = Lexer::new(TEST_STR);
+        let mut parser = Parser::new(lexer);
+
+        let mut token = parser.next();
+        while token != Token::Eof {
+            token = parser.next();
+            println!("{}", token);
+        }
     }
 }
