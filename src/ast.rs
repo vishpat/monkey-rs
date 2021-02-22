@@ -135,7 +135,7 @@ struct InfixExpression
 
 impl std::fmt::Display for InfixExpression {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        write!(fmt, "{} {} {};", self.left, self.op, self.right)
+        write!(fmt, "{} {} {}", self.left, self.op, self.right)
     }
 }
 
@@ -191,16 +191,20 @@ impl Expression for CallExpression{}
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Identifier, InfixExpression};
+    use crate::ast::{Identifier, InfixExpression, LetStatement};
 
     #[test]
-    fn test_display_identifier() {
+    fn test_infix_expression() {
         let x =
             Box::new(Identifier{value:Box::new(String::from("x"))});
         let y =
             Box::new(Identifier{value:Box::new(String::from("y"))});
+        let z =
+            Box::new(Identifier{value:Box::new(String::from("z"))});
 
         let infix_expr = Box::new(InfixExpression{left: x, op: Box::new(String::from("+")), right:y});
-        println!("{}", infix_expr);
+        let let_expr = Box::new(LetStatement{id: z, expr:infix_expr});
+        let let_expr_str = format!("{}", let_expr);
+        assert_eq!("z = x + y;", let_expr_str);
     }
 }
