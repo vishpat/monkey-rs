@@ -1,5 +1,5 @@
 use crate::lexer::{Lexer, Token};
-use crate::ast::{Program};
+use crate::ast::*;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Display};
@@ -25,7 +25,7 @@ impl Parser {
     pub fn new(mut lexer: Box<Lexer>) -> Box<Parser> {
         let curr_token = lexer.next();
         let next_token = lexer.next();
-        Box::new(Parser{lexer, curr_token, next_token})
+        Box::new(Parser { lexer, curr_token, next_token })
     }
 
     pub fn next(&mut self) -> Token {
@@ -38,8 +38,59 @@ impl Parser {
         self.next_token.clone()
     }
 
-    fn parse_program(&mut self) -> Result<Program, ParseError> {
-        Err(ParseError{token: self.lexer.peek()})
+    fn parse_let_statement(&mut self) -> Box<dyn Statement> {
+        let token = self.next();
+        let identifer = match token {
+            Token::Ident(s) => Identifier::new(Box::new(s)),
+            _ => panic!("Invalid token in let statement {}", token)
+        };
+
+        let token = self.next();
+        match token {
+            Token::Assign => true,
+            _ => panic!("Invalid token in let statement {}", token)
+        };
+
+        let expr = self.parse_expression();
+        LetStatement::new(identifer, expr)
+    }
+
+    //    fn parse_return_statement(&self) -> Box<dyn Statement> {
+//        Box::new()
+//    }
+//
+//    fn parse_if_statement(&self) -> Box<dyn Statement> {
+//        Box::new()
+//    }
+//
+    fn parse_expression(&mut self) -> Box<dyn Expression> {
+        let token = self.next();
+        match token {
+            Token::Int(val) => {
+                let token = self.next();
+                match token {
+                    Token::Semicolon => {self.next(); Integer::new(val)},
+                    _ => panic!("Not implemented {}", token)
+                }
+            }
+            _ => panic!("Not implemented {}", token)
+        }
+    }
+
+    pub fn parse_program(&mut self) -> Result<Box<Program>, ParseError> {
+        let mut program = Box::new(Program { statements: vec![] });
+
+        while self.curr_token != Token::Eof {
+            let statement = match self.curr_token {
+                Token::Let => self.parse_let_statement(),
+                //    Token::Return => self.parse_return_statement(),
+                //    Token::If => self.parse_if_statement(),
+                _ => panic!("Invalid token {}", self.curr_token)
+            };
+            program.statements.push(statement);
+        }
+
+       Ok(program)
     }
 }
 
@@ -79,7 +130,21 @@ mod tests {
         let mut token = parser.next();
         while token != Token::Eof {
             token = parser.next();
-            println!("{}", token);
+            let peek_token = parser.peek();
+            println!("{} {}", token, peek_token);
         }
+    }
+
+    const TEST_LET_STATEMENTS_STR: &str = "
+       let five = 5;
+       let ten = 10;
+    ";
+
+    #[test]
+    fn test_parser_let_statements() {
+        let lexer = Lexer::new(TEST_LET_STATEMENTS_STR);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+        program.statements.iter().map(|s| println!("{}", s));
     }
 }

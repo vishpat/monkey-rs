@@ -1,5 +1,5 @@
 use std::fmt;
-use std::fmt::{Debug, Display};
+use std::fmt::{Debug};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Token {

@@ -1,11 +1,11 @@
 use crate::lexer::Token;
 use std::ptr::write_bytes;
 
-trait Statement: std::fmt::Display {}
-trait Expression: std::fmt::Display {}
+pub trait Statement: std::fmt::Display {}
+pub trait Expression: std::fmt::Display {}
 
 pub struct Program {
-    statements: Vec<Box<dyn Statement>>
+    pub(crate) statements: Vec<Box<dyn Statement>>
 }
 
 // Statements
@@ -14,6 +14,12 @@ pub struct Program {
 pub struct LetStatement {
     id: Box<Identifier>,
     expr: Box<dyn Expression>,
+}
+
+impl LetStatement {
+    pub fn new(id: Box<Identifier>, expr: Box<dyn Expression>) -> Box<LetStatement> {
+        Box::new(LetStatement{id, expr})
+    }
 }
 
 impl std::fmt::Display for LetStatement {
@@ -74,6 +80,12 @@ pub struct Identifier {
     value: Box<String>
 }
 
+impl Identifier {
+    pub fn new(str: Box<String>) -> Box<Identifier> {
+        Box::new(Identifier{value: str})
+    }
+}
+
 impl std::fmt::Display for Identifier {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.value)
@@ -99,6 +111,12 @@ impl Expression for Boolean{}
 // Int
 pub struct Integer {
     value: usize
+}
+
+impl Integer {
+    pub fn new(val: usize) -> Box<Integer> {
+        Box::new(Integer{value:val})
+    }
 }
 
 impl std::fmt::Display for Integer {
