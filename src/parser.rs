@@ -145,6 +145,8 @@ mod tests {
         let lexer = Lexer::new(TEST_LET_STATEMENTS_STR);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program().unwrap();
-        program.statements.iter().map(|s| println!("{}", s));
+        for s in program.statements.iter() {
+            println!("{}", s);
+        }
     }
 }
