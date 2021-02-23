@@ -2,6 +2,7 @@ use crate::lexer::Token;
 use std::ptr::write_bytes;
 
 pub trait Statement: std::fmt::Display {}
+
 pub trait Expression: std::fmt::Display {}
 
 pub struct Program {
@@ -18,7 +19,7 @@ pub struct LetStatement {
 
 impl LetStatement {
     pub fn new(id: Box<Identifier>, expr: Box<dyn Expression>) -> Box<LetStatement> {
-        Box::new(LetStatement{id, expr})
+        Box::new(LetStatement { id, expr })
     }
 }
 
@@ -28,7 +29,7 @@ impl std::fmt::Display for LetStatement {
     }
 }
 
-impl Statement for LetStatement{}
+impl Statement for LetStatement {}
 
 // Return
 pub struct ReturnStatement {
@@ -41,7 +42,7 @@ impl std::fmt::Display for ReturnStatement {
     }
 }
 
-impl Statement for ReturnStatement{}
+impl Statement for ReturnStatement {}
 
 // Expression
 pub struct ExpressionStatement {
@@ -54,7 +55,7 @@ impl std::fmt::Display for ExpressionStatement {
     }
 }
 
-impl Statement for ExpressionStatement{}
+impl Statement for ExpressionStatement {}
 
 // Block
 pub struct BlockStatement {
@@ -65,13 +66,13 @@ impl std::fmt::Display for BlockStatement {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         write!(fmt, "{{");
         for x in self.block.iter() {
-           write!(fmt, "{}", x);
+            write!(fmt, "{}", x);
         }
         write!(fmt, "}}")
     }
 }
 
-impl Statement for BlockStatement{}
+impl Statement for BlockStatement {}
 
 // Expressions
 
@@ -82,7 +83,7 @@ pub struct Identifier {
 
 impl Identifier {
     pub fn new(str: Box<String>) -> Box<Identifier> {
-        Box::new(Identifier{value: str})
+        Box::new(Identifier { value: str })
     }
 }
 
@@ -106,7 +107,7 @@ impl std::fmt::Display for Boolean {
     }
 }
 
-impl Expression for Boolean{}
+impl Expression for Boolean {}
 
 // Int
 pub struct Integer {
@@ -115,7 +116,7 @@ pub struct Integer {
 
 impl Integer {
     pub fn new(val: usize) -> Box<Integer> {
-        Box::new(Integer{value:val})
+        Box::new(Integer { value: val })
     }
 }
 
@@ -125,7 +126,7 @@ impl std::fmt::Display for Integer {
     }
 }
 
-impl Expression for Integer{}
+impl Expression for Integer {}
 
 // Prefix Expression
 pub struct PrefixExpression
@@ -140,7 +141,7 @@ impl std::fmt::Display for PrefixExpression {
     }
 }
 
-impl Expression for PrefixExpression{}
+impl Expression for PrefixExpression {}
 
 
 // Infix Expression
@@ -148,7 +149,13 @@ pub struct InfixExpression
 {
     left: Box<dyn Expression>,
     op: Box<String>,
-    right: Box<dyn Expression>
+    right: Box<dyn Expression>,
+}
+
+impl InfixExpression {
+    pub fn new(left: Box<dyn Expression>, op: Box<String>, right: Box<dyn Expression>) -> Box<InfixExpression> {
+        Box::new(InfixExpression{left, op, right})
+    }
 }
 
 impl std::fmt::Display for InfixExpression {
@@ -157,7 +164,7 @@ impl std::fmt::Display for InfixExpression {
     }
 }
 
-impl Expression for InfixExpression{}
+impl Expression for InfixExpression {}
 
 // If Expression
 pub struct IfExpression {
@@ -172,13 +179,13 @@ impl std::fmt::Display for IfExpression {
     }
 }
 
-impl Expression for IfExpression{}
+impl Expression for IfExpression {}
 
 // Function
 pub struct FunctionLiteral {
     name: Identifier,
     parameters: Box<Vec<Identifier>>,
-    block: Box<BlockStatement>
+    block: Box<BlockStatement>,
 }
 
 impl std::fmt::Display for FunctionLiteral {
@@ -187,7 +194,7 @@ impl std::fmt::Display for FunctionLiteral {
     }
 }
 
-impl Expression for FunctionLiteral{}
+impl Expression for FunctionLiteral {}
 
 // Call Expression
 pub struct CallExpression {
@@ -205,7 +212,7 @@ impl std::fmt::Display for CallExpression {
     }
 }
 
-impl Expression for CallExpression{}
+impl Expression for CallExpression {}
 
 #[cfg(test)]
 mod tests {
@@ -214,14 +221,14 @@ mod tests {
     #[test]
     fn test_infix_expression() {
         let x =
-            Box::new(Identifier{value:Box::new(String::from("x"))});
+            Box::new(Identifier { value: Box::new(String::from("x")) });
         let y =
-            Box::new(Identifier{value:Box::new(String::from("y"))});
+            Box::new(Identifier { value: Box::new(String::from("y")) });
         let z =
-            Box::new(Identifier{value:Box::new(String::from("z"))});
+            Box::new(Identifier { value: Box::new(String::from("z")) });
 
-        let infix_expr = Box::new(InfixExpression{left: x, op: Box::new(String::from("+")), right:y});
-        let let_expr = Box::new(LetStatement{id: z, expr:infix_expr});
+        let infix_expr = Box::new(InfixExpression { left: x, op: Box::new(String::from("+")), right: y });
+        let let_expr = Box::new(LetStatement { id: z, expr: infix_expr });
         let let_expr_str = format!("{}", let_expr);
         assert_eq!("z = x + y;", let_expr_str);
     }

@@ -69,7 +69,18 @@ impl Parser {
             Token::Int(val) => {
                 let token = self.next();
                 match token {
-                    Token::Semicolon => {self.next(); Integer::new(val)},
+                    Token::Semicolon => {
+                        self.next();
+                        Integer::new(val)
+                    }
+                    Token::Plus => {
+                        let expr = self.parse_expression();
+                        InfixExpression::new(Integer::new(val), Box::new(String::from("+")), expr)
+                    }
+                    Token::Minus => {
+                        let expr = self.parse_expression();
+                        InfixExpression::new(Integer::new(val), Box::new(String::from("-")), expr)
+                    }
                     _ => panic!("Not implemented {}", token)
                 }
             }
@@ -90,7 +101,7 @@ impl Parser {
             program.statements.push(statement);
         }
 
-       Ok(program)
+        Ok(program)
     }
 }
 
@@ -136,8 +147,10 @@ mod tests {
     }
 
     const TEST_LET_STATEMENTS_STR: &str = "
-       let five = 5;
-       let ten = 10;
+        let five = 5;
+        let ten = 10;
+        let twenty = 10 + 10;
+        let zero = 10 - 10;
     ";
 
     #[test]
@@ -146,8 +159,10 @@ mod tests {
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program().unwrap();
         let statements = program.statements;
-        assert_eq!(statements.len(), 2);
+        assert_eq!(statements.len(), 4);
         assert_eq!(format!("{}", statements[0]), "five = 5;");
         assert_eq!(format!("{}", statements[1]), "ten = 10;");
+        assert_eq!(format!("{}", statements[2]), "twenty = 10 + 10;");
+        assert_eq!(format!("{}", statements[3]), "zero = 10 - 10;")
     }
 }
