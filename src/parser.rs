@@ -145,8 +145,9 @@ mod tests {
         let lexer = Lexer::new(TEST_LET_STATEMENTS_STR);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program().unwrap();
-        for s in program.statements.iter() {
-            println!("{}", s);
-        }
+        let statements = program.statements;
+        assert_eq!(statements.len(), 2);
+        assert_eq!(format!("{}", statements[0]), "five = 5;");
+        assert_eq!(format!("{}", statements[1]), "ten = 10;");
     }
 }
