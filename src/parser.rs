@@ -107,7 +107,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Identifier, InfixExpression, LetStatement};
+    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode};
     use crate::lexer::{Lexer, Token};
     use crate::parser::Parser;
 
@@ -160,9 +160,17 @@ mod tests {
         let program = parser.parse_program().unwrap();
         let statements = program.statements;
         assert_eq!(statements.len(), 4);
+
         assert_eq!(format!("{}", statements[0]), "five = 5;");
+        assert_eq!(AstNode::LetStatement, statements[0].ast_node_type());
+
         assert_eq!(format!("{}", statements[1]), "ten = 10;");
+        assert_eq!(AstNode::LetStatement, statements[0].ast_node_type());
+
         assert_eq!(format!("{}", statements[2]), "twenty = 10 + 10;");
-        assert_eq!(format!("{}", statements[3]), "zero = 10 - 10;")
+        assert_eq!(AstNode::LetStatement, statements[0].ast_node_type());
+
+        assert_eq!(format!("{}", statements[3]), "zero = 10 - 10;");
+        assert_eq!(AstNode::LetStatement, statements[0].ast_node_type());
     }
 }
