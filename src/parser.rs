@@ -68,10 +68,11 @@ impl Parser {
         LetStatement::new(identifer, expr)
     }
 
-    //    fn parse_return_statement(&self) -> Box<dyn Statement> {
-//        Box::new()
-//    }
-//
+    fn parse_return_statement(&mut self) -> Box<dyn Statement> {
+        let expr = self.parse_expression();
+        ReturnStatement::new(expr)
+    }
+    //
 //    fn parse_if_statement(&self) -> Box<dyn Statement> {
 //        Box::new()
 //    }
@@ -107,7 +108,7 @@ impl Parser {
         while self.curr_token != Token::Eof {
             let statement = match self.curr_token {
                 Token::Let => self.parse_let_statement(),
-                //    Token::Return => self.parse_return_statement(),
+                Token::Return => self.parse_return_statement(),
                 //    Token::If => self.parse_if_statement(),
                 _ => panic!("Invalid token {}", self.curr_token)
             };
@@ -120,7 +121,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode};
+    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode, ReturnStatement};
     use crate::lexer::{Lexer, Token};
     use crate::parser::Parser;
     use std::any::Any;
@@ -177,10 +178,9 @@ mod tests {
         assert_eq!(statements.len(), 4);
         let mut idx = 0;
         for stmt in statements.iter() {
-
             assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
 
-            let let_stmt :&LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
+            let let_stmt: &LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
                 Some(b) => b,
                 None => panic!("Invalid type")
             };
@@ -196,4 +196,38 @@ mod tests {
             idx += 1;
         }
     }
+
+    const TEST_RETURN_STATEMENTS_STR: &str = "
+        return 5;
+        return 10 + 4;
+    ";
+
+    #[test]
+    fn test_parser_return_statements() {
+        let lexer = Lexer::new(TEST_RETURN_STATEMENTS_STR);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+        let statements = program.statements;
+
+        assert_eq!(statements.len(), 2);
+
+        let mut idx = 0;
+        for stmt in statements.iter() {
+            assert_eq!(AstNode::ReturnStatement, stmt.ast_node_type());
+
+            let ret_stmt: &ReturnStatement = match stmt.as_any().downcast_ref::<ReturnStatement>() {
+                Some(b) => b,
+                None => panic!("Invalid type")
+            };
+
+            match idx {
+                0 => assert_eq!(format!("{}", ret_stmt), "return 5;"),
+                1 => assert_eq!(format!("{}", ret_stmt), "return 10 + 4;"),
+                _ => panic!("Unexcepted index {}", idx)
+            }
+
+            idx += 1;
+        }
+    }
+
 }

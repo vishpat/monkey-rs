@@ -73,6 +73,12 @@ pub struct ReturnStatement {
     pub expr: Box<dyn Expression>
 }
 
+impl ReturnStatement {
+    pub fn new(expr: Box<dyn Expression>) -> Box<ReturnStatement> {
+        Box::new(ReturnStatement{expr})
+    }
+}
+
 impl std::fmt::Display for ReturnStatement {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         write!(fmt, "return {};", self.expr)
