@@ -1,5 +1,6 @@
 use crate::lexer::Token;
 use std::ptr::write_bytes;
+use std::any::Any;
 
 #[derive(Debug, PartialEq)]
 pub enum AstNode {
@@ -19,8 +20,8 @@ pub enum AstNode {
 }
 
 pub trait Node: std::fmt::Debug {
-
     fn ast_node_type(&self) -> AstNode;
+    fn as_any(&self) -> &dyn Any;
 }
 
 pub trait Statement: Node + std::fmt::Display {}
@@ -58,6 +59,10 @@ impl Node for LetStatement {
     fn ast_node_type(&self) -> AstNode {
         AstNode::LetStatement
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 // Return
@@ -78,6 +83,10 @@ impl Node for ReturnStatement {
     fn ast_node_type(&self) -> AstNode {
         AstNode::ReturnStatement
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 // Expression
@@ -97,6 +106,9 @@ impl Statement for ExpressionStatement {}
 impl Node for ExpressionStatement {
     fn ast_node_type(&self) -> AstNode {
         AstNode::ExpressionStatement
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -122,6 +134,9 @@ impl Statement for BlockStatement {}
 impl Node for BlockStatement {
     fn ast_node_type(&self) -> AstNode {
         AstNode::BlockStatement
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -152,6 +167,10 @@ impl Node for Identifier {
     fn ast_node_type(&self) -> AstNode {
         AstNode::IdentifierExpression
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 // Bool
@@ -171,6 +190,10 @@ impl Expression for Boolean {}
 impl Node for Boolean {
     fn ast_node_type(&self) -> AstNode {
         AstNode::BooleanExpression
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -198,6 +221,10 @@ impl Node for Integer {
     fn ast_node_type(&self) -> AstNode {
         AstNode::IntegerExpression
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 // Prefix Expression
@@ -219,6 +246,10 @@ impl Expression for PrefixExpression {}
 impl Node for PrefixExpression {
     fn ast_node_type(&self) -> AstNode {
         AstNode::PrefixExpression
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -249,6 +280,10 @@ impl Node for InfixExpression {
     fn ast_node_type(&self) -> AstNode {
         AstNode::InfixExpression
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 // If Expression
@@ -270,6 +305,10 @@ impl Expression for IfExpression {}
 impl Node for IfExpression {
     fn ast_node_type(&self) -> AstNode {
         AstNode::IfExpression
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -293,6 +332,10 @@ impl Expression for FunctionLiteral {}
 impl Node for FunctionLiteral {
     fn ast_node_type(&self) -> AstNode {
         AstNode::FunctionLiteralExpression
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -318,6 +361,10 @@ impl Expression for CallExpression {}
 impl Node for CallExpression {
     fn ast_node_type(&self) -> AstNode {
         AstNode::CallExpression
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 

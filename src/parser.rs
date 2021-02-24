@@ -110,6 +110,7 @@ mod tests {
     use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode};
     use crate::lexer::{Lexer, Token};
     use crate::parser::Parser;
+    use std::any::Any;
 
     const TEST_STR: &str = "
     let five = 5;
@@ -159,18 +160,21 @@ mod tests {
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program().unwrap();
         let statements = program.statements;
+
         assert_eq!(statements.len(), 4);
 
+        for stmt in statements.iter() {
+            assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
+            let let_stmt :&LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
+                Some(b) => b,
+                None => panic!("Invalid type")
+            };
+            println!("{}", let_stmt);
+        }
+
         assert_eq!(format!("{}", statements[0]), "five = 5;");
-        assert_eq!(AstNode::LetStatement, statements[0].ast_node_type());
-
         assert_eq!(format!("{}", statements[1]), "ten = 10;");
-        assert_eq!(AstNode::LetStatement, statements[0].ast_node_type());
-
         assert_eq!(format!("{}", statements[2]), "twenty = 10 + 10;");
-        assert_eq!(AstNode::LetStatement, statements[0].ast_node_type());
-
         assert_eq!(format!("{}", statements[3]), "zero = 10 - 10;");
-        assert_eq!(AstNode::LetStatement, statements[0].ast_node_type());
     }
 }
