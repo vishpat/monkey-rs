@@ -162,19 +162,25 @@ mod tests {
         let statements = program.statements;
 
         assert_eq!(statements.len(), 4);
-
+        let mut idx = 0;
         for stmt in statements.iter() {
+
             assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
+
             let let_stmt :&LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
                 Some(b) => b,
                 None => panic!("Invalid type")
             };
-            println!("{}", let_stmt);
-        }
 
-        assert_eq!(format!("{}", statements[0]), "five = 5;");
-        assert_eq!(format!("{}", statements[1]), "ten = 10;");
-        assert_eq!(format!("{}", statements[2]), "twenty = 10 + 10;");
-        assert_eq!(format!("{}", statements[3]), "zero = 10 - 10;");
+            match idx {
+                0 => assert_eq!(format!("{}", let_stmt), "five = 5;"),
+                1 => assert_eq!(format!("{}", let_stmt), "ten = 10;"),
+                2 => assert_eq!(format!("{}", let_stmt), "twenty = 10 + 10;"),
+                3 => assert_eq!(format!("{}", let_stmt), "zero = 10 - 10;"),
+                _ => panic!("Unexcepted index {}", idx)
+            }
+
+            idx += 1;
+        }
     }
 }
