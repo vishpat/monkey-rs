@@ -21,6 +21,8 @@ pub enum AstNode {
 
 pub trait Node: std::fmt::Debug {
     fn ast_node_type(&self) -> AstNode;
+
+    // Required to downcast a Trait to specify structure
     fn as_any(&self) -> &dyn Any;
 }
 
@@ -37,8 +39,8 @@ pub struct Program {
 // Let
 #[derive(Debug)]
 pub struct LetStatement {
-    id: Box<Identifier>,
-    expr: Box<dyn Expression>,
+    pub id: Box<Identifier>,
+    pub expr: Box<dyn Expression>,
 }
 
 impl LetStatement {
@@ -68,7 +70,7 @@ impl Node for LetStatement {
 // Return
 #[derive(Debug)]
 pub struct ReturnStatement {
-    expr: Box<dyn Expression>
+    pub expr: Box<dyn Expression>
 }
 
 impl std::fmt::Display for ReturnStatement {
@@ -92,7 +94,7 @@ impl Node for ReturnStatement {
 // Expression
 #[derive(Debug)]
 pub struct ExpressionStatement {
-    expr: Box<dyn Expression>
+    pub expr: Box<dyn Expression>
 }
 
 impl std::fmt::Display for ExpressionStatement {
@@ -116,7 +118,7 @@ impl Node for ExpressionStatement {
 // Block
 #[derive(Debug)]
 pub struct BlockStatement {
-    block: Box<Vec<Box<dyn Statement>>>
+    pub block: Box<Vec<Box<dyn Statement>>>
 }
 
 impl std::fmt::Display for BlockStatement {
@@ -145,7 +147,7 @@ impl Node for BlockStatement {
 // Ident
 #[derive(Debug)]
 pub struct Identifier {
-    value: Box<String>
+    pub value: Box<String>
 }
 
 impl Identifier {
@@ -176,7 +178,7 @@ impl Node for Identifier {
 // Bool
 #[derive(Debug)]
 pub struct Boolean {
-    value: bool
+    pub value: bool
 }
 
 impl std::fmt::Display for Boolean {
@@ -200,7 +202,7 @@ impl Node for Boolean {
 // Int
 #[derive(Debug)]
 pub struct Integer {
-    value: usize
+    pub value: usize
 }
 
 impl Integer {
@@ -231,8 +233,8 @@ impl Node for Integer {
 #[derive(Debug)]
 pub struct PrefixExpression
 {
-    op: Box<String>,
-    expr: Box<dyn Expression>,
+    pub op: Box<String>,
+    pub expr: Box<dyn Expression>,
 }
 
 impl std::fmt::Display for PrefixExpression {
@@ -257,9 +259,9 @@ impl Node for PrefixExpression {
 #[derive(Debug)]
 pub struct InfixExpression
 {
-    left: Box<dyn Expression>,
-    op: Box<String>,
-    right: Box<dyn Expression>,
+    pub left: Box<dyn Expression>,
+    pub op: Box<String>,
+    pub right: Box<dyn Expression>,
 }
 
 impl InfixExpression {
@@ -289,9 +291,9 @@ impl Node for InfixExpression {
 // If Expression
 #[derive(Debug)]
 pub struct IfExpression {
-    cond: Box<dyn Expression>,
-    true_block: Box<BlockStatement>,
-    false_block: Box<BlockStatement>,
+    pub cond: Box<dyn Expression>,
+    pub true_block: Box<BlockStatement>,
+    pub false_block: Box<BlockStatement>,
 }
 
 impl std::fmt::Display for IfExpression {
@@ -316,9 +318,9 @@ impl Node for IfExpression {
 // Function
 #[derive(Debug)]
 pub struct FunctionLiteral {
-    name: Identifier,
-    parameters: Box<Vec<Identifier>>,
-    block: Box<BlockStatement>,
+    pub name: Identifier,
+    pub parameters: Box<Vec<Identifier>>,
+    pub block: Box<BlockStatement>,
 }
 
 impl std::fmt::Display for FunctionLiteral {
@@ -342,8 +344,8 @@ impl Node for FunctionLiteral {
 // Call Expression
 #[derive(Debug)]
 pub struct CallExpression {
-    function: Box<dyn Expression>,
-    parameters: Box<Vec<Box<dyn Expression>>>,
+    pub function: Box<dyn Expression>,
+    pub parameters: Box<Vec<Box<dyn Expression>>>,
 }
 
 impl std::fmt::Display for CallExpression {
