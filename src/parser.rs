@@ -34,23 +34,36 @@ impl Parser {
         self.curr_token.clone()
     }
 
+    pub fn is_curr_token(&self, token: Token) -> bool {
+        self.curr_token == token
+    }
+
     pub fn peek(&self) -> Token {
         self.next_token.clone()
     }
 
+    pub fn is_next_token(&self, peek_token: Token) -> bool {
+        self.next_token == peek_token
+    }
+
+    pub fn expect_next_token(&mut self, token: Token) -> bool {
+        self.next() == token
+    }
+
     fn parse_let_statement(&mut self) -> Box<dyn Statement> {
+        // Get identifier token
         let token = self.next();
         let identifer = match token {
             Token::Ident(s) => Identifier::new(Box::new(s)),
-            _ => panic!("Invalid token in let statement {}", token)
+            _ => panic!("Identifier token not found in let statement {}", token)
         };
 
-        let token = self.next();
-        match token {
-            Token::Assign => true,
-            _ => panic!("Invalid token in let statement {}", token)
-        };
+        // Check assignment token
+        if self.expect_next_token(Token::Assign) == false {
+            panic!("Assignment token not found in let statement")
+        }
 
+        // Parse expression
         let expr = self.parse_expression();
         LetStatement::new(identifer, expr)
     }
