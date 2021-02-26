@@ -3,6 +3,19 @@ use crate::ast::*;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Display};
+use std::collections::HashMap;
+use crate::ast::AstNode::IdentifierExpression;
+
+#[derive(Debug, PartialEq, Eq, Clone, PartialOrd)]
+enum Precedence {
+    LOWEST,
+    EQUALS,
+    LESSGREATER,
+    SUM,
+    PRODUCT,
+    PREFIX,
+    CALL,
+}
 
 #[derive(Debug)]
 struct ParseError {
@@ -25,7 +38,7 @@ impl Parser {
     pub fn new(mut lexer: Box<Lexer>) -> Box<Parser> {
         let curr_token = lexer.next();
         let next_token = lexer.next();
-        Box::new(Parser { lexer, curr_token, next_token })
+        Box::new(Parser { lexer, curr_token, next_token})
     }
 
     pub fn next(&mut self) -> Token {
@@ -41,6 +54,19 @@ impl Parser {
     pub fn peek(&self) -> Token {
         self.next_token.clone()
     }
+
+    pub fn peek_precedence(&self) -> Precedence {
+        let next_token = self.peek();
+
+        match next_token {
+            Token::Plus => Precedence::SUM,
+            Token::Asterik => Precedence::PRODUCT,
+            Token::Minus => Precedence::SUM,
+            Token::Int(i) => Precedence::PREFIX,
+            _ => panic!("Precedence not found for peek token {}", next_token),
+        }
+    }
+
 
     pub fn is_next_token(&self, peek_token: Token) -> bool {
         self.next_token == peek_token
@@ -63,13 +89,21 @@ impl Parser {
             panic!("Assignment token not found in let statement")
         }
 
+        self.next();
+
         // Parse expression
-        let expr = self.parse_expression();
-        LetStatement::new(identifer, expr)
+        let expr = self.parse_expression(Precedence::LOWEST);
+        let let_stmt = LetStatement::new(identifer, expr);
+
+        if self.peek() == Token::Semicolon {
+            self.next();
+        }
+
+        let_stmt
     }
 
     fn parse_return_statement(&mut self) -> Box<dyn Statement> {
-        let expr = self.parse_expression();
+        let expr = self.parse_expression(Precedence::LOWEST);
         ReturnStatement::new(expr)
     }
     //
@@ -77,29 +111,53 @@ impl Parser {
 //        Box::new()
 //    }
 //
-    fn parse_expression(&mut self) -> Box<dyn Expression> {
-        let token = self.next();
-        match token {
-            Token::Int(val) => {
-                let token = self.next();
-                match token {
-                    Token::Semicolon => {
-                        self.next();
-                        Integer::new(val)
-                    }
-                    Token::Plus => {
-                        let expr = self.parse_expression();
-                        InfixExpression::new(Integer::new(val), Box::new(String::from("+")), expr)
-                    }
-                    Token::Minus => {
-                        let expr = self.parse_expression();
-                        InfixExpression::new(Integer::new(val), Box::new(String::from("-")), expr)
-                    }
-                    _ => panic!("Not implemented {}", token)
-                }
-            }
-            _ => panic!("Not implemented {}", token)
+    fn parse_identifier(&mut self) -> Box<dyn Expression> {
+        let curr_token = &self.curr_token;
+
+        match curr_token {
+            Token::Ident(s) => Identifier::new(Box::new(s.clone())),
+            _ => panic!("Unable to parse identifier {}", self.curr_token)
         }
+    }
+
+    fn parse_integer(&mut self) -> Box<dyn Expression> {
+        let curr_token = &self.curr_token;
+
+        match curr_token {
+            Token::Int(s) => Integer::new( *s),
+            _ => panic!("Unable to parse integer {}", self.curr_token)
+        }
+    }
+
+    fn parse_expression(&mut self, precedence: Precedence) -> Box<dyn Expression> {
+
+        let curr_token = &self.curr_token;
+
+        // Prefix
+        let mut left: Box<dyn Expression> = match curr_token {
+            Token::Ident(s) => self.parse_identifier(),
+            Token::Int(s) => self.parse_integer(),
+            _ => panic!("Invalid token in expression {}", curr_token)
+        };
+
+        // Infix
+        while self.peek() != Token::Semicolon  && self.peek_precedence() > precedence {
+            let next_token = self.peek();
+            left = match next_token {
+                Token::Asterik| Token::Plus | Token::Minus => {
+                    self.next();
+                    let precedence = self.peek_precedence();
+                    self.next();
+                    let expr = InfixExpression::new(left, Box::new(next_token),
+                                                    self.parse_expression(precedence));
+                    expr
+                },
+                _ => left
+            };
+            self.next();
+        }
+
+        left
     }
 
     pub fn parse_program(&mut self) -> Result<Box<Program>, ParseError> {
@@ -113,6 +171,7 @@ impl Parser {
                 _ => panic!("Invalid token {}", self.curr_token)
             };
             program.statements.push(statement);
+            self.next();
         }
 
         Ok(program)
@@ -186,10 +245,10 @@ mod tests {
             };
 
             match idx {
-                0 => assert_eq!(format!("{}", let_stmt), "five = 5;"),
-                1 => assert_eq!(format!("{}", let_stmt), "ten = 10;"),
-                2 => assert_eq!(format!("{}", let_stmt), "twenty = 10 + 10;"),
-                3 => assert_eq!(format!("{}", let_stmt), "zero = 10 - 10;"),
+                0 => assert_eq!(format!("{}", let_stmt), "let five = 5;"),
+                1 => assert_eq!(format!("{}", let_stmt), "let ten = 10;"),
+                2 => assert_eq!(format!("{}", let_stmt), "let twenty = 10 + 10;"),
+                3 => assert_eq!(format!("{}", let_stmt), "let zero = 10 - 10;"),
                 _ => panic!("Unexcepted index {}", idx)
             }
 
@@ -229,5 +288,4 @@ mod tests {
             idx += 1;
         }
     }
-
 }

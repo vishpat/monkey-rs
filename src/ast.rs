@@ -51,7 +51,7 @@ impl LetStatement {
 
 impl std::fmt::Display for LetStatement {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(fmt, "{} = {};", self.id, self.expr)
+        write!(fmt, "let {} = {};", self.id, self.expr)
     }
 }
 
@@ -266,12 +266,12 @@ impl Node for PrefixExpression {
 pub struct InfixExpression
 {
     pub left: Box<dyn Expression>,
-    pub op: Box<String>,
+    pub op: Box<Token>,
     pub right: Box<dyn Expression>,
 }
 
 impl InfixExpression {
-    pub fn new(left: Box<dyn Expression>, op: Box<String>, right: Box<dyn Expression>) -> Box<InfixExpression> {
+    pub fn new(left: Box<dyn Expression>, op: Box<Token>, right: Box<dyn Expression>) -> Box<InfixExpression> {
         Box::new(InfixExpression{left, op, right})
     }
 }
@@ -379,6 +379,7 @@ impl Node for CallExpression {
 #[cfg(test)]
 mod tests {
     use crate::ast::{Identifier, InfixExpression, LetStatement, Node, AstNode};
+    use crate::lexer::Token;
 
     #[test]
     fn test_infix_expression() {
@@ -394,13 +395,13 @@ mod tests {
             Box::new(Identifier { value: Box::new(String::from("z")) });
         assert_eq!(z.ast_node_type(), AstNode::IdentifierExpression);
 
-        let infix_expr = Box::new(InfixExpression { left: x, op: Box::new(String::from("+")), right: y });
+        let infix_expr = Box::new(InfixExpression { left: x, op: Box::new(Token::Plus), right: y });
         assert_eq!(infix_expr.ast_node_type(), AstNode::InfixExpression);
 
         let let_expr = Box::new(LetStatement { id: z, expr: infix_expr });
         assert_eq!(let_expr.ast_node_type(), AstNode::LetStatement);
 
         let let_expr_str = format!("{}", let_expr);
-        assert_eq!("z = x + y;", let_expr_str);
+        assert_eq!("let z = x + y;", let_expr_str);
     }
 }
