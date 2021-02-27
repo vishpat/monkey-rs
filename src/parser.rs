@@ -185,7 +185,8 @@ impl Parser {
             self.next();
 
             left = match t {
-                Token::Asterik | Token::Plus | Token::Minus =>
+                Token::Plus | Token::Minus | Token::Slash | Token::Asterik |
+                Token::Eq | Token::NotEq | Token::Lt | Token::Gt =>
                     InfixExpression::new(left, Box::new(t.clone()),
                                          self.parse_expression(self.precedence(&t)))
                 ,
