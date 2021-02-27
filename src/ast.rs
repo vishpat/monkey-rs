@@ -290,7 +290,7 @@ impl InfixExpression {
 
 impl std::fmt::Display for InfixExpression {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        write!(fmt, "{} {} {}", self.left, self.op, self.right)
+        write!(fmt, "({} {} {})", self.left, self.op, self.right)
     }
 }
 
@@ -414,6 +414,6 @@ mod tests {
         assert_eq!(let_expr.ast_node_type(), AstNode::LetStatement);
 
         let let_expr_str = format!("{}", let_expr);
-        assert_eq!("let z = x + y;", let_expr_str);
+        assert_eq!("let z = (x + y);", let_expr_str);
     }
 }

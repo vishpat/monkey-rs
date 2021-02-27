@@ -285,9 +285,9 @@ mod tests {
             match idx {
                 0 => assert_eq!(format!("{}", let_stmt), "let five = 5;"),
                 1 => assert_eq!(format!("{}", let_stmt), "let ten = 10;"),
-                2 => assert_eq!(format!("{}", let_stmt), "let twenty = 10 + 10;"),
-                3 => assert_eq!(format!("{}", let_stmt), "let zero = 10 - 10;"),
-                4 => assert_eq!(format!("{}", let_stmt), "let complex = 10 - 20 + 1 * 2;"),
+                2 => assert_eq!(format!("{}", let_stmt), "let twenty = (10 + 10);"),
+                3 => assert_eq!(format!("{}", let_stmt), "let zero = (10 - 10);"),
+                4 => assert_eq!(format!("{}", let_stmt), "let complex = ((10 - 20) + (1 * 2));"),
                 _ => panic!("Unexcepted index {}", idx)
             }
 
@@ -297,7 +297,7 @@ mod tests {
 
     const TEST_RETURN_STATEMENTS_STR: &str = "
         return 5;
-        return 10 + 4;
+        return 10 + 4 * 5;
     ";
 
     #[test]
@@ -320,7 +320,7 @@ mod tests {
 
             match idx {
                 0 => assert_eq!(format!("{}", ret_stmt), "return 5;"),
-                1 => assert_eq!(format!("{}", ret_stmt), "return 10 + 4;"),
+                1 => assert_eq!(format!("{}", ret_stmt), "return (10 + (4 * 5));"),
                 _ => panic!("Unexcepted index {}", idx)
             }
 
