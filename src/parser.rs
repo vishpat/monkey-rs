@@ -70,16 +70,8 @@ impl Parser {
         }
     }
 
-    pub fn peek_precedence(&self) -> Precedence {
-        self.precedence(&self.peek())
-    }
-
     pub fn curr_precedence(&self) -> Precedence {
         self.precedence(&self.curr_token)
-    }
-
-    pub fn is_next_token(&self, peek_token: Token) -> bool {
-        self.next_token == peek_token
     }
 
     pub fn expect_next_token(&mut self, token: Token) -> bool {
@@ -321,6 +313,44 @@ mod tests {
             match idx {
                 0 => assert_eq!(format!("{}", ret_stmt), "return 5;"),
                 1 => assert_eq!(format!("{}", ret_stmt), "return (10 + (4 * 5));"),
+                _ => panic!("Unexcepted index {}", idx)
+            }
+
+            idx += 1;
+        }
+    }
+    const TEST_INTEGERS_STR: &str = "
+        let x = 5;
+        let y = 10;
+    ";
+
+    #[test]
+    fn test_parser_integer_expressions() {
+        let lexer = Lexer::new(TEST_INTEGERS_STR);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+        let statements = program.statements;
+
+        assert_eq!(statements.len(), 2);
+        let mut idx = 0;
+        for stmt in statements.iter() {
+            assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
+
+            let let_stmt: &LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
+                Some(b) => {
+                    assert_eq!(b.expr.ast_node_type(), AstNode::IntegerExpression);
+                    b
+                },
+                None => panic!("Invalid type")
+            };
+
+            match idx {
+                0 => {
+                    assert_eq!(format!("{}", let_stmt.expr), "5")
+                },
+                1 => {
+                    assert_eq!(format!("{}", let_stmt.expr), "10")
+                },
                 _ => panic!("Unexcepted index {}", idx)
             }
 
