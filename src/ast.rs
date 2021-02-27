@@ -1,6 +1,7 @@
 use crate::lexer::Token;
 use std::ptr::write_bytes;
 use std::any::Any;
+use std::alloc::Global;
 
 #[derive(Debug, PartialEq)]
 pub enum AstNode {
@@ -75,7 +76,7 @@ pub struct ReturnStatement {
 
 impl ReturnStatement {
     pub fn new(expr: Box<dyn Expression>) -> Box<ReturnStatement> {
-        Box::new(ReturnStatement{expr})
+        Box::new(ReturnStatement { expr })
     }
 }
 
@@ -187,6 +188,12 @@ pub struct Boolean {
     pub value: bool
 }
 
+impl Boolean {
+    pub fn new(val: bool) -> Box<Boolean> {
+        Box::new(Boolean { value: val })
+    }
+}
+
 impl std::fmt::Display for Boolean {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.value)
@@ -239,8 +246,14 @@ impl Node for Integer {
 #[derive(Debug)]
 pub struct PrefixExpression
 {
-    pub op: Box<String>,
+    pub op: Box<Token>,
     pub expr: Box<dyn Expression>,
+}
+
+impl PrefixExpression {
+    pub fn new(op: Box<Token>, expr: Box<dyn Expression>) -> Box<PrefixExpression> {
+        Box::new(PrefixExpression{op, expr})
+    }
 }
 
 impl std::fmt::Display for PrefixExpression {
@@ -272,7 +285,7 @@ pub struct InfixExpression
 
 impl InfixExpression {
     pub fn new(left: Box<dyn Expression>, op: Box<Token>, right: Box<dyn Expression>) -> Box<InfixExpression> {
-        Box::new(InfixExpression{left, op, right})
+        Box::new(InfixExpression { left, op, right })
     }
 }
 

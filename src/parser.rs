@@ -59,10 +59,15 @@ impl Parser {
         let next_token = self.peek();
 
         match next_token {
+            Token::Eq => Precedence::EQUALS,
+            Token::NotEq => Precedence::EQUALS,
+            Token::Lt => Precedence::LESSGREATER,
+            Token::Gt => Precedence::LESSGREATER,
             Token::Plus => Precedence::SUM,
-            Token::Asterik => Precedence::PRODUCT,
             Token::Minus => Precedence::SUM,
-            Token::Int(i) => Precedence::PREFIX,
+            Token::Asterik => Precedence::PRODUCT,
+            Token::Slash => Precedence::PRODUCT,
+            Token::LParen => Precedence::CALL,
             _ => panic!("Precedence not found for peek token {}", next_token),
         }
     }
@@ -129,6 +134,23 @@ impl Parser {
         }
     }
 
+    fn parse_boolean(&mut self) -> Box<dyn Expression> {
+        let curr_token = &self.curr_token;
+
+        match curr_token {
+            Token::True => Box::new(Boolean::new(true)),
+            Token::False => Box::new(Boolean::new(false)),
+            _ => panic!("Invalid boolean {}", curr_token)
+        }
+    }
+
+    fn parse_prefix_expression(&mut self) -> Box<dyn Expression> {
+        let op = self.curr_token.clone();
+        self.next();
+        PrefixExpression::new(Box::new(op),
+                              self.parse_expression(Precedence::PREFIX))
+    }
+
     fn parse_expression(&mut self, precedence: Precedence) -> Box<dyn Expression> {
 
         let curr_token = &self.curr_token;
@@ -137,6 +159,11 @@ impl Parser {
         let mut left: Box<dyn Expression> = match curr_token {
             Token::Ident(s) => self.parse_identifier(),
             Token::Int(s) => self.parse_integer(),
+            Token::True | Token::False => self.parse_boolean(),
+            Token::Bang | Token::Minus => self.parse_prefix_expression(),
+            Token::LParen => notimplemented!(),
+            Token::If => notimplemented!(),
+            Token::Function => notimplemented!(),
             _ => panic!("Invalid token in expression {}", curr_token)
         };
 
@@ -145,7 +172,6 @@ impl Parser {
             let next_token = self.peek();
             left = match next_token {
                 Token::Asterik| Token::Plus | Token::Minus => {
-                    self.next();
                     let precedence = self.peek_precedence();
                     self.next();
                     let expr = InfixExpression::new(left, Box::new(next_token),
