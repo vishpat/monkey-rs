@@ -5,7 +5,7 @@ use crate::ast::*;
 use log::{info, warn};
 
 #[cfg(test)]
-use std::{println as debug, println as info, println as warn};
+use std::{println as trace, println as debug, println as info, println as warn};
 
 use std::error::Error;
 use std::fmt;
@@ -79,6 +79,11 @@ impl Parser {
 
     pub fn curr_precedence(&self) -> Precedence {
         self.precedence(&self.curr_token)
+    }
+
+    pub fn peek_precedence(&self) -> Precedence {
+        trace!("Peek Precedence: For {}", self.next_token);
+        self.precedence(&self.next_token)
     }
 
     pub fn expect_next_token(&mut self, token: Token) -> bool {
@@ -164,6 +169,16 @@ impl Parser {
                               self.parse_expression(Precedence::Prefix))
     }
 
+    fn parse_group_expression(&mut self) -> Box<dyn Expression> {
+        let op: Token = self.curr_token.clone();
+        debug!("Parse Grouped Expression: current token {}", op);
+        self.expect_next_token(Token::LParen);
+        let expr = self.parse_expression(Precedence::Lowest);
+        self.expect_next_token(Token::RParen);
+
+        expr
+    }
+
     ///
     ///  This function has been implemented using the TDOP algorithm mentioned
     /// [here](https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing)
@@ -171,7 +186,7 @@ impl Parser {
     fn parse_expression(&mut self, precedence: Precedence) -> Box<dyn Expression> {
         let mut t = self.curr_token.clone();
 
-        debug!("Parse expression - 1: current token {}", t);
+        debug!("Parse Expression: current token {} precedence {:?}", t, precedence);
 
         // Prefix
         let mut left: Box<dyn Expression> = match t {
@@ -179,29 +194,25 @@ impl Parser {
             Token::Int(s) => self.parse_integer(),
             Token::True | Token::False => self.parse_boolean(),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
-            Token::LParen => unimplemented!(),
+            Token::LParen => self.parse_group_expression(),
             Token::If => unimplemented!(),
             Token::Function => unimplemented!(),
             _ => panic!("Invalid token in expression {}", t)
         };
 
-        if self.curr_token != Token::Semicolon {
-            self.next();
-        }
-
-        debug!("Parse Expression - 2: current token {}", self.curr_token);
+        debug!("Parse Expression: current token {} next token {} left {}", self.curr_token,
+                    self.next_token, left);
 
         // Infix
-        while self.curr_token != Token::Semicolon && self.curr_token != Token::Eof &&
-            self.curr_precedence() > precedence {
-            t = self.curr_token.clone();
-            self.next();
+        while self.peek() != Token::Semicolon && self.peek_precedence() > precedence {
+            let token = self.next();
 
-            left = match t {
+            left = match token {
                 Token::Plus | Token::Minus | Token::Slash | Token::Asterik |
-                Token::Eq | Token::NotEq | Token::Lt | Token::Gt =>
-                    InfixExpression::new(left, Box::new(t.clone()),
-                                         self.parse_expression(self.precedence(&t)))
+                Token::Eq | Token::NotEq | Token::Lt | Token::Gt => {
+                    self.next();
+                    InfixExpression::new(left, Box::new(token.clone()),
+                                         self.parse_expression(self.precedence(&token))) }
                 ,
                 _ => left
             };
@@ -273,9 +284,9 @@ mod tests {
     const TEST_LET_STATEMENTS_STR: &str = "
         let five = 5;
         let ten = 10;
-        let twenty = 10 + 10;
-        let zero = 10 - 10;
-        let complex = 10 - 20 + 1 * 2;
+        let twenty = 20 + 20;
+        let zero = 30 - 40;
+        let complex = 11 - 22 + 11 * 22;
     ";
 
     #[test]
@@ -298,9 +309,9 @@ mod tests {
             match idx {
                 0 => assert_eq!(format!("{}", let_stmt), "let five = 5;"),
                 1 => assert_eq!(format!("{}", let_stmt), "let ten = 10;"),
-                2 => assert_eq!(format!("{}", let_stmt), "let twenty = (10 + 10);"),
-                3 => assert_eq!(format!("{}", let_stmt), "let zero = (10 - 10);"),
-                4 => assert_eq!(format!("{}", let_stmt), "let complex = ((10 - 20) + (1 * 2));"),
+                2 => assert_eq!(format!("{}", let_stmt), "let twenty = (20 + 20);"),
+                3 => assert_eq!(format!("{}", let_stmt), "let zero = (30 - 40);"),
+                4 => assert_eq!(format!("{}", let_stmt), "let complex = ((11 - 22) + (11 * 22));"),
                 _ => panic!("Unexcepted index {}", idx)
             }
 
@@ -466,4 +477,38 @@ mod tests {
             idx += 1;
         }
     }
+
+//    const TEST_GROUPED_EXPRESSION_STR: &str = "
+//        let x = (x + y);
+//        let x = (x + y) + (l + k);
+//        let x = ((x * 2) + (3 * (2 + 3) + 2));
+//    ";
+//
+//    #[test]
+//    fn test_parser_grouped_expressions() {
+//        let lexer = Lexer::new(TEST_GROUPED_EXPRESSION_STR);
+//        let mut parser = Parser::new(lexer);
+//        let program = parser.parse_program().unwrap();
+//        let statements = program.statements;
+//
+//        assert_eq!(statements.len(), 3);
+//        let mut idx = 0;
+//        for stmt in statements.iter() {
+//            assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
+//
+//            let let_stmt: &LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
+//                Some(b) => b,
+//                None => panic!("Invalid type")
+//            };
+//
+//            match idx {
+//                0 => assert_eq!(format!("{}", let_stmt), "let x = (x + y);"),
+//                1 => assert_eq!(format!("{}", let_stmt), "let x = (x + y) + (l + k);"),
+//                2 => assert_eq!(format!("{}", let_stmt), "let x = ((x * 2) + (3 * (2 + 3) + 2));"),
+//                _ => panic!("Unexcepted index {}", idx)
+//            }
+//
+//            idx += 1;
+//        }
+//    }
 }
