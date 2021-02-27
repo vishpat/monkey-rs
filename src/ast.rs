@@ -127,11 +127,17 @@ pub struct BlockStatement {
     pub block: Box<Vec<Box<dyn Statement>>>
 }
 
+impl BlockStatement {
+    pub fn new(statements: Box<Vec<Box<dyn Statement>>>) -> Box<BlockStatement> {
+        Box::new(BlockStatement{block: statements})
+    }
+}
+
 impl std::fmt::Display for BlockStatement {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         write!(fmt, "{{");
         for x in self.block.iter() {
-            write!(fmt, "{}", x);
+            write!(fmt, "{{\n\t {} \n\t}}", x);
         }
         write!(fmt, "}}")
     }
@@ -251,7 +257,7 @@ pub struct PrefixExpression
 
 impl PrefixExpression {
     pub fn new(op: Box<Token>, expr: Box<dyn Expression>) -> Box<PrefixExpression> {
-        Box::new(PrefixExpression{op, expr})
+        Box::new(PrefixExpression { op, expr })
     }
 }
 
@@ -312,6 +318,13 @@ pub struct IfExpression {
     pub cond: Box<dyn Expression>,
     pub true_block: Box<BlockStatement>,
     pub false_block: Box<BlockStatement>,
+}
+
+impl IfExpression {
+    pub fn new(cond: Box<dyn Expression>, true_block: Box<BlockStatement>,
+               false_block: Box<BlockStatement>) -> Box<IfExpression> {
+        Box::new(IfExpression { cond, true_block, false_block })
+    }
 }
 
 impl std::fmt::Display for IfExpression {

@@ -130,7 +130,7 @@ impl Parser {
     fn parse_identifier(&mut self) -> Box<dyn Expression> {
         let curr_token = &self.curr_token;
 
-        debug!("Parse identifier: current token {}", curr_token);
+        trace!("Parse identifier: current token {}", curr_token);
 
         match curr_token {
             Token::Ident(s) => Identifier::new(Box::new(s.clone())),
@@ -160,7 +160,7 @@ impl Parser {
     fn parse_prefix_expression(&mut self) -> Box<dyn Expression> {
         let op = self.curr_token.clone();
 
-        debug!("Parse prefix expression: current token {}", op);
+        trace!("Parse prefix expression: current token {}", op);
 
         assert_eq!(op == Token::Bang || op == Token::Minus, true);
 
@@ -170,13 +170,46 @@ impl Parser {
     }
 
     fn parse_group_expression(&mut self) -> Box<dyn Expression> {
-        let op: Token = self.curr_token.clone();
-        debug!("Parse Grouped Expression: current token {}", op);
+        trace!("Parse Grouped Expression: current token {}", self.curr_token);
         self.expect_next_token(Token::LParen);
         let expr = self.parse_expression(Precedence::Lowest);
         self.expect_next_token(Token::RParen);
 
         expr
+    }
+
+//    fn parse_if_expression(&mut self) -> Box<dyn Expression> {
+//        trace!("Parse If Expression");
+//
+//        self.expect_next_token(Token::If);
+//        self.expect_next_token(Token::LParen);
+//        let condition = self.parse_expression(Token::Lowest);
+//        self.expect_next_token(Token::RParen);
+//        self.expect_next_token(Token::LBrace);
+//
+//        if self.peek() == Token::Else {
+//            self.next();
+//            self.expect_next_token(Token::LBrace);
+//
+//        }
+//
+//        IfExpression::new()
+//    }
+
+    fn parse_block_statement(&mut self) -> Box<BlockStatement> {
+        let mut statements: Vec<Box<dyn Statement>> = vec![];
+
+        self.expect_next_token(Token::LBrace);
+
+        while self.curr_token != Token::Eof && self.curr_token != Token::RBrace {
+            let statement = self.parse_statement();
+            statements.push(statement);
+            self.next();
+        }
+
+        self.expect_next_token(Token::RBrace);
+
+        BlockStatement::new(Box::new(statements))
     }
 
     ///
@@ -186,7 +219,7 @@ impl Parser {
     fn parse_expression(&mut self, precedence: Precedence) -> Box<dyn Expression> {
         let mut t = self.curr_token.clone();
 
-        debug!("Parse Expression: current token {} precedence {:?}", t, precedence);
+        trace!("Parse Expression: current token {} precedence {:?}", t, precedence);
 
         // Prefix
         let mut left: Box<dyn Expression> = match t {
@@ -200,7 +233,7 @@ impl Parser {
             _ => panic!("Invalid token in expression {}", t)
         };
 
-        debug!("Parse Expression: current token {} next token {} left {}", self.curr_token,
+        trace!("Parse Expression: current token {} next token {} left {}", self.curr_token,
                     self.next_token, left);
 
         // Infix
@@ -221,16 +254,21 @@ impl Parser {
         left
     }
 
+    pub fn parse_statement(&mut self) -> Box<dyn Statement> {
+        let statement = match self.curr_token {
+            Token::Let => self.parse_let_statement(),
+            Token::Return => self.parse_return_statement(),
+            Token::LBrace => self.parse_block_statement(),
+            _ => unimplemented!()
+        };
+        statement
+    }
+
     pub fn parse_program(&mut self) -> Result<Box<Program>, ParseError> {
         let mut program = Box::new(Program { statements: vec![] });
 
         while self.curr_token != Token::Eof {
-            let statement = match self.curr_token {
-                Token::Let => self.parse_let_statement(),
-                Token::Return => self.parse_return_statement(),
-                //    Token::If => self.parse_if_statement(),
-                _ => panic!("Invalid token {}", self.curr_token)
-            };
+            let statement = self.parse_statement();
             program.statements.push(statement);
             self.next();
         }
@@ -241,7 +279,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode, ReturnStatement, PrefixExpression};
+    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode, ReturnStatement, PrefixExpression, BlockStatement};
     use crate::lexer::{Lexer, Token};
     use crate::parser::Parser;
     use std::any::Any;
@@ -347,6 +385,60 @@ mod tests {
                 1 => assert_eq!(format!("{}", ret_stmt), "return (10 + (4 * 5));"),
                 _ => panic!("Unexcepted index {}", idx)
             }
+
+            idx += 1;
+        }
+    }
+
+    const TEST_BLOCK_STATEMENTS: &str = "
+        {
+            let x = 10;
+            let y = 20 * 30;
+            let z = !a;
+            {
+                let aa = 40;
+                let bb = 50;
+                let cc = 20 + 40;
+            }
+        }
+    ";
+
+    #[test]
+    fn test_parser_block_statement() {
+        let lexer = Lexer::new(TEST_BLOCK_STATEMENTS);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+        let statements = program.statements;
+
+        println!("{:?}", statements);
+        assert_eq!(statements.len(), 1);
+        let mut idx = 0;
+        for stmt in statements.iter() {
+            assert_eq!(AstNode::BlockStatement, stmt.ast_node_type());
+
+            let block_stmt: &BlockStatement = match stmt.as_any().downcast_ref::<BlockStatement>() {
+                Some(b) => {
+                    b
+                }
+                None => panic!("Invalid type, expected Block statement")
+            };
+
+            let mut statements = &block_stmt.block;
+            assert_eq!(format!("{}", statements[0]), "let x = 10;");
+            assert_eq!(format!("{}", statements[1]), "let y = (20 * 30);");
+            assert_eq!(format!("{}", statements[2]), "let z = !a;");
+
+            let block_stmt2: &BlockStatement = match statements[3].as_any().downcast_ref::<BlockStatement>() {
+                Some(b) => {
+                    b
+                }
+                None => panic!("Invalid type, expected Block statement")
+            };
+
+            let mut statements = &block_stmt2.block;
+            assert_eq!(format!("{}", statements[0]), "let aa = 40;");
+            assert_eq!(format!("{}", statements[1]), "let bb = 50;");
+            assert_eq!(format!("{}", statements[2]), "let cc = (20 + 40);");
 
             idx += 1;
         }
