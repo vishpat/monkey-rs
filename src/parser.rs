@@ -73,7 +73,7 @@ impl Parser {
             Token::Asterik => Precedence::Product,
             Token::Slash => Precedence::Product,
             Token::LParen => Precedence::Call,
-            _ => panic!("Precedence not found for token {}", token),
+            _ => Precedence::Lowest,
         }
     }
 
@@ -478,37 +478,37 @@ mod tests {
         }
     }
 
-//    const TEST_GROUPED_EXPRESSION_STR: &str = "
-//        let x = (x + y);
-//        let x = (x + y) + (l + k);
-//        let x = ((x * 2) + (3 * (2 + 3) + 2));
-//    ";
-//
-//    #[test]
-//    fn test_parser_grouped_expressions() {
-//        let lexer = Lexer::new(TEST_GROUPED_EXPRESSION_STR);
-//        let mut parser = Parser::new(lexer);
-//        let program = parser.parse_program().unwrap();
-//        let statements = program.statements;
-//
-//        assert_eq!(statements.len(), 3);
-//        let mut idx = 0;
-//        for stmt in statements.iter() {
-//            assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
-//
-//            let let_stmt: &LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
-//                Some(b) => b,
-//                None => panic!("Invalid type")
-//            };
-//
-//            match idx {
-//                0 => assert_eq!(format!("{}", let_stmt), "let x = (x + y);"),
-//                1 => assert_eq!(format!("{}", let_stmt), "let x = (x + y) + (l + k);"),
-//                2 => assert_eq!(format!("{}", let_stmt), "let x = ((x * 2) + (3 * (2 + 3) + 2));"),
-//                _ => panic!("Unexcepted index {}", idx)
-//            }
-//
-//            idx += 1;
-//        }
-//    }
+    const TEST_GROUPED_EXPRESSION_STR: &str = "
+        let x = (x + y);
+        let x = (x + y) + (l + k);
+        let x = ((x * 2) + (3 * (2 + 3) + 2));
+    ";
+
+    #[test]
+    fn test_parser_grouped_expressions() {
+        let lexer = Lexer::new(TEST_GROUPED_EXPRESSION_STR);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+        let statements = program.statements;
+
+        assert_eq!(statements.len(), 3);
+        let mut idx = 0;
+        for stmt in statements.iter() {
+            assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
+
+            let let_stmt: &LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
+                Some(b) => b,
+                None => panic!("Invalid type")
+            };
+
+            match idx {
+                0 => assert_eq!(format!("{}", let_stmt), "let x = (x + y);"),
+                1 => assert_eq!(format!("{}", let_stmt), "let x = ((x + y) + (l + k));"),
+                2 => assert_eq!(format!("{}", let_stmt), "let x = ((x * 2) + ((3 * (2 + 3)) + 2));"),
+                _ => panic!("Unexcepted index {}", idx)
+            }
+
+            idx += 1;
+        }
+    }
 }
