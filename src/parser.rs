@@ -212,6 +212,15 @@ impl Parser {
         BlockStatement::new(Box::new(statements))
     }
 
+    pub fn parse_expression_statement(&mut self) -> Box<dyn Statement> {
+        let expr = self.parse_expression(Precedence::Lowest);
+        if self.peek() == Token::Semicolon {
+            self.next();
+        }
+
+        ExpressionStatement::new(expr)
+    }
+
     ///
     ///  This function has been implemented using the TDOP algorithm mentioned
     /// [here](https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing)
@@ -259,7 +268,7 @@ impl Parser {
             Token::Let => self.parse_let_statement(),
             Token::Return => self.parse_return_statement(),
             Token::LBrace => self.parse_block_statement(),
-            _ => unimplemented!()
+            _ => self.parse_expression_statement(),
         };
         statement
     }

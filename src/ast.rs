@@ -103,6 +103,12 @@ pub struct ExpressionStatement {
     pub expr: Box<dyn Expression>
 }
 
+impl ExpressionStatement {
+    pub fn new(expr: Box<dyn Expression>) -> Box<ExpressionStatement> {
+        Box::new(ExpressionStatement{expr: expr})
+    }
+}
+
 impl std::fmt::Display for ExpressionStatement {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(fmt, "{};", self.expr)
