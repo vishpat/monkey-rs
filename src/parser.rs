@@ -1,5 +1,12 @@
 use crate::lexer::{Lexer, Token};
 use crate::ast::*;
+
+#[cfg(not(test))]
+use log::{info, warn};
+
+#[cfg(test)]
+use std::{println as debug, println as info, println as warn};
+
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Display};
@@ -66,7 +73,7 @@ impl Parser {
             Token::Asterik => Precedence::Product,
             Token::Slash => Precedence::Product,
             Token::LParen => Precedence::Call,
-            _ => panic!("Precedence not found for peek token {}", token),
+            _ => panic!("Precedence not found for token {}", token),
         }
     }
 
@@ -118,6 +125,8 @@ impl Parser {
     fn parse_identifier(&mut self) -> Box<dyn Expression> {
         let curr_token = &self.curr_token;
 
+        debug!("Parse identifier: current token {}", curr_token);
+
         match curr_token {
             Token::Ident(s) => Identifier::new(Box::new(s.clone())),
             _ => panic!("Unable to parse identifier {}", self.curr_token)
@@ -145,6 +154,11 @@ impl Parser {
 
     fn parse_prefix_expression(&mut self) -> Box<dyn Expression> {
         let op = self.curr_token.clone();
+
+        debug!("Parse prefix expression: current token {}", op);
+
+        assert_eq!(op == Token::Bang || op == Token::Minus, true);
+
         self.next();
         PrefixExpression::new(Box::new(op),
                               self.parse_expression(Precedence::Prefix))
@@ -156,6 +170,8 @@ impl Parser {
     ///
     fn parse_expression(&mut self, precedence: Precedence) -> Box<dyn Expression> {
         let mut t = self.curr_token.clone();
+
+        debug!("Parse expression - 1: current token {}", t);
 
         // Prefix
         let mut left: Box<dyn Expression> = match t {
@@ -169,10 +185,15 @@ impl Parser {
             _ => panic!("Invalid token in expression {}", t)
         };
 
-        self.next();
+        if self.curr_token != Token::Semicolon {
+            self.next();
+        }
+
+        debug!("Parse Expression - 2: current token {}", self.curr_token);
 
         // Infix
-        while self.curr_token != Token::Semicolon && self.curr_precedence() > precedence {
+        while self.curr_token != Token::Semicolon && self.curr_token != Token::Eof &&
+            self.curr_precedence() > precedence {
             t = self.curr_token.clone();
             self.next();
 
@@ -209,7 +230,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode, ReturnStatement};
+    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode, ReturnStatement, PrefixExpression};
     use crate::lexer::{Lexer, Token};
     use crate::parser::Parser;
     use std::any::Any;
@@ -319,6 +340,7 @@ mod tests {
             idx += 1;
         }
     }
+
     const TEST_INTEGERS_STR: &str = "
         let x = 5;
         let y = 10;
@@ -340,17 +362,104 @@ mod tests {
                 Some(b) => {
                     assert_eq!(b.expr.ast_node_type(), AstNode::IntegerExpression);
                     b
-                },
+                }
                 None => panic!("Invalid type")
             };
 
             match idx {
                 0 => {
                     assert_eq!(format!("{}", let_stmt.expr), "5")
-                },
+                }
                 1 => {
                     assert_eq!(format!("{}", let_stmt.expr), "10")
-                },
+                }
+                _ => panic!("Unexcepted index {}", idx)
+            }
+
+            idx += 1;
+        }
+    }
+
+    const TEST_BOOLEAN_STR: &str = "
+        let x = true;
+        let y = false;
+    ";
+
+    #[test]
+    fn test_parser_boolean_expressions() {
+        let lexer = Lexer::new(TEST_BOOLEAN_STR);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+        let statements = program.statements;
+
+        assert_eq!(statements.len(), 2);
+        let mut idx = 0;
+        for stmt in statements.iter() {
+            assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
+
+            let let_stmt: &LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
+                Some(b) => {
+                    assert_eq!(b.expr.ast_node_type(), AstNode::BooleanExpression);
+                    b
+                }
+                None => panic!("Invalid type, expected let statement")
+            };
+
+            match idx {
+                0 => {
+                    assert_eq!(format!("{}", let_stmt.expr), "true")
+                }
+                1 => {
+                    assert_eq!(format!("{}", let_stmt.expr), "false")
+                }
+                _ => panic!("Unexcepted index {}", idx)
+            }
+
+            idx += 1;
+        }
+    }
+
+    const TEST_PREFIX_STR: &str = "
+        let x = !y;
+        let x = -1;
+    ";
+
+    #[test]
+    fn test_parser_prefix_expressions() {
+        let lexer = Lexer::new(TEST_PREFIX_STR);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+        let statements = program.statements;
+
+        assert_eq!(statements.len(), 2);
+        let mut idx = 0;
+        for stmt in statements.iter() {
+            assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
+
+            let let_stmt: &LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
+                Some(b) => {
+                    assert_eq!(b.expr.ast_node_type(), AstNode::PrefixExpression);
+                    b
+                }
+                None => panic!("Invalid type")
+            };
+
+            let prefix_expr: &PrefixExpression = match let_stmt.expr.as_any().downcast_ref::<PrefixExpression>() {
+                Some(px) => {
+                    px
+                }
+                None => panic!("Invalid type, expected prefix expression")
+            };
+
+            match idx {
+                0 => {
+                    assert_eq!(format!("{}", prefix_expr.op), "!");
+                    assert_eq!(format!("{}", prefix_expr.expr), "y");
+                }
+                1 => {
+                    assert_eq!(format!("{}", prefix_expr.op), "-");
+                    assert_eq!(format!("{}", prefix_expr.expr), "1");
+                }
                 _ => panic!("Unexcepted index {}", idx)
             }
 
