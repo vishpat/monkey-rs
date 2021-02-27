@@ -8,13 +8,13 @@ use crate::ast::AstNode::IdentifierExpression;
 
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd)]
 enum Precedence {
-    LOWEST,
-    EQUALS,
-    LESSGREATER,
-    SUM,
-    PRODUCT,
-    PREFIX,
-    CALL,
+    Lowest,
+    Equals,
+    LessGreater,
+    Sum,
+    Product,
+    Prefix,
+    Call,
 }
 
 #[derive(Debug)]
@@ -57,15 +57,15 @@ impl Parser {
 
     pub fn precedence(&self, token: &Token) -> Precedence {
         match token {
-            Token::Eq => Precedence::EQUALS,
-            Token::NotEq => Precedence::EQUALS,
-            Token::Lt => Precedence::LESSGREATER,
-            Token::Gt => Precedence::LESSGREATER,
-            Token::Plus => Precedence::SUM,
-            Token::Minus => Precedence::SUM,
-            Token::Asterik => Precedence::PRODUCT,
-            Token::Slash => Precedence::PRODUCT,
-            Token::LParen => Precedence::CALL,
+            Token::Eq => Precedence::Equals,
+            Token::NotEq => Precedence::Equals,
+            Token::Lt => Precedence::LessGreater,
+            Token::Gt => Precedence::LessGreater,
+            Token::Plus => Precedence::Sum,
+            Token::Minus => Precedence::Sum,
+            Token::Asterik => Precedence::Product,
+            Token::Slash => Precedence::Product,
+            Token::LParen => Precedence::Call,
             _ => panic!("Precedence not found for peek token {}", token),
         }
     }
@@ -94,7 +94,7 @@ impl Parser {
         self.next();
 
         // Parse expression
-        let expr = self.parse_expression(Precedence::LOWEST);
+        let expr = self.parse_expression(Precedence::Lowest);
         let let_stmt = LetStatement::new(identifer, expr);
 
         if self.peek() == Token::Semicolon {
@@ -106,7 +106,7 @@ impl Parser {
 
     fn parse_return_statement(&mut self) -> Box<dyn Statement> {
         self.next();
-        let expr = self.parse_expression(Precedence::LOWEST);
+        let expr = self.parse_expression(Precedence::Lowest);
 
         if self.peek() == Token::Semicolon {
             self.next();
@@ -147,7 +147,7 @@ impl Parser {
         let op = self.curr_token.clone();
         self.next();
         PrefixExpression::new(Box::new(op),
-                              self.parse_expression(Precedence::PREFIX))
+                              self.parse_expression(Precedence::Prefix))
     }
 
     ///
