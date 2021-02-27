@@ -38,7 +38,7 @@ impl Parser {
     pub fn new(mut lexer: Box<Lexer>) -> Box<Parser> {
         let curr_token = lexer.next();
         let next_token = lexer.next();
-        Box::new(Parser { lexer, curr_token, next_token})
+        Box::new(Parser { lexer, curr_token, next_token })
     }
 
     pub fn next(&mut self) -> Token {
@@ -55,10 +55,8 @@ impl Parser {
         self.next_token.clone()
     }
 
-    pub fn peek_precedence(&self) -> Precedence {
-        let next_token = self.peek();
-
-        match next_token {
+    pub fn precedence(&self, token: &Token) -> Precedence {
+        match token {
             Token::Eq => Precedence::EQUALS,
             Token::NotEq => Precedence::EQUALS,
             Token::Lt => Precedence::LESSGREATER,
@@ -68,10 +66,17 @@ impl Parser {
             Token::Asterik => Precedence::PRODUCT,
             Token::Slash => Precedence::PRODUCT,
             Token::LParen => Precedence::CALL,
-            _ => panic!("Precedence not found for peek token {}", next_token),
+            _ => panic!("Precedence not found for peek token {}", token),
         }
     }
 
+    pub fn peek_precedence(&self) -> Precedence {
+        self.precedence(&self.peek())
+    }
+
+    pub fn curr_precedence(&self) -> Precedence {
+        self.precedence(&self.curr_token)
+    }
 
     pub fn is_next_token(&self, peek_token: Token) -> bool {
         self.next_token == peek_token
@@ -129,7 +134,7 @@ impl Parser {
         let curr_token = &self.curr_token;
 
         match curr_token {
-            Token::Int(s) => Integer::new( *s),
+            Token::Int(s) => Integer::new(*s),
             _ => panic!("Unable to parse integer {}", self.curr_token)
         }
     }
@@ -138,8 +143,8 @@ impl Parser {
         let curr_token = &self.curr_token;
 
         match curr_token {
-            Token::True => Box::new(Boolean::new(true)),
-            Token::False => Box::new(Boolean::new(false)),
+            Token::True => Boolean::new(true),
+            Token::False => Boolean::new(false),
             _ => panic!("Invalid boolean {}", curr_token)
         }
     }
@@ -152,35 +157,34 @@ impl Parser {
     }
 
     fn parse_expression(&mut self, precedence: Precedence) -> Box<dyn Expression> {
-
-        let curr_token = &self.curr_token;
+        let mut t = self.curr_token.clone();
 
         // Prefix
-        let mut left: Box<dyn Expression> = match curr_token {
+        let mut left: Box<dyn Expression> = match t {
             Token::Ident(s) => self.parse_identifier(),
             Token::Int(s) => self.parse_integer(),
             Token::True | Token::False => self.parse_boolean(),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
-            Token::LParen => notimplemented!(),
-            Token::If => notimplemented!(),
-            Token::Function => notimplemented!(),
-            _ => panic!("Invalid token in expression {}", curr_token)
+            Token::LParen => unimplemented!(),
+            Token::If => unimplemented!(),
+            Token::Function => unimplemented!(),
+            _ => panic!("Invalid token in expression {}", t)
         };
 
+        self.next();
+
         // Infix
-        while self.peek() != Token::Semicolon  && self.peek_precedence() > precedence {
-            let next_token = self.peek();
-            left = match next_token {
-                Token::Asterik| Token::Plus | Token::Minus => {
-                    let precedence = self.peek_precedence();
-                    self.next();
-                    let expr = InfixExpression::new(left, Box::new(next_token),
-                                                    self.parse_expression(precedence));
-                    expr
-                },
+        while self.curr_token != Token::Semicolon && self.curr_precedence() > precedence {
+            t = self.curr_token.clone();
+            self.next();
+
+            left = match t {
+                Token::Asterik | Token::Plus | Token::Minus =>
+                    InfixExpression::new(left, Box::new(t.clone()),
+                                         self.parse_expression(self.precedence(&t)))
+                ,
                 _ => left
             };
-            self.next();
         }
 
         left

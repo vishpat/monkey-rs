@@ -1,7 +1,6 @@
 use crate::lexer::Token;
 use std::ptr::write_bytes;
 use std::any::Any;
-use std::alloc::Global;
 
 #[derive(Debug, PartialEq)]
 pub enum AstNode {
