@@ -113,14 +113,16 @@ impl Parser {
     }
 
     fn parse_return_statement(&mut self) -> Box<dyn Statement> {
+        self.next();
         let expr = self.parse_expression(Precedence::LOWEST);
+
+        if self.peek() == Token::Semicolon {
+            self.next();
+        }
+
         ReturnStatement::new(expr)
     }
-    //
-//    fn parse_if_statement(&self) -> Box<dyn Statement> {
-//        Box::new()
-//    }
-//
+
     fn parse_identifier(&mut self) -> Box<dyn Expression> {
         let curr_token = &self.curr_token;
 
@@ -156,6 +158,10 @@ impl Parser {
                               self.parse_expression(Precedence::PREFIX))
     }
 
+    ///
+    ///  This function has been implemented using the TDOP algorithm mentioned
+    /// [here](https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing)
+    ///
     fn parse_expression(&mut self, precedence: Precedence) -> Box<dyn Expression> {
         let mut t = self.curr_token.clone();
 
@@ -255,6 +261,7 @@ mod tests {
         let ten = 10;
         let twenty = 10 + 10;
         let zero = 10 - 10;
+        let complex = 10 - 20 + 1 * 2;
     ";
 
     #[test]
@@ -264,7 +271,7 @@ mod tests {
         let program = parser.parse_program().unwrap();
         let statements = program.statements;
 
-        assert_eq!(statements.len(), 4);
+        assert_eq!(statements.len(), 5);
         let mut idx = 0;
         for stmt in statements.iter() {
             assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
@@ -279,6 +286,7 @@ mod tests {
                 1 => assert_eq!(format!("{}", let_stmt), "let ten = 10;"),
                 2 => assert_eq!(format!("{}", let_stmt), "let twenty = 10 + 10;"),
                 3 => assert_eq!(format!("{}", let_stmt), "let zero = 10 - 10;"),
+                4 => assert_eq!(format!("{}", let_stmt), "let complex = 10 - 20 + 1 * 2;"),
                 _ => panic!("Unexcepted index {}", idx)
             }
 
