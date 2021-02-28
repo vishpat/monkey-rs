@@ -63,7 +63,7 @@ fn token_str_repr(token: &Token) -> Box<String> {
         Token::NotEq => String::from("!="),
 
         // Delimiters
-        Token::Comma => String::from("),"),
+        Token::Comma => String::from(","),
         Token::Semicolon => String::from(";"),
 
         Token::LParen => String::from("("),
