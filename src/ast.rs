@@ -336,10 +336,10 @@ impl IfExpression {
 impl std::fmt::Display for IfExpression {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         if self.false_block.is_some() {
-            write!(fmt, "if ({}) {{ {} }} else {{ {} }};", self.cond, self.true_block,
+            write!(fmt, "if {} {} else {}", self.cond, self.true_block,
                    self.false_block.as_ref().unwrap())
         } else {
-            write!(fmt, "if ({}) {{ {} }};", self.cond, self.true_block)
+            write!(fmt, "if {} {}", self.cond, self.true_block)
         }
     }
 }
