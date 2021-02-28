@@ -241,13 +241,43 @@ impl Parser {
                 Token::Eq | Token::NotEq | Token::Lt | Token::Gt => {
                     self.next();
                     InfixExpression::new(left, Box::new(token.clone()),
-                                         self.parse_expression(self.precedence(&token))) }
-                ,
+                                         self.parse_expression(self.precedence(&token)))
+                }
                 _ => left
             };
         }
 
         left
+    }
+
+    pub fn parse_function_parameters(&mut self) -> Box<Vec<Box<Identifier>>> {
+        let mut parameters: Box<Vec<Box<Identifier>>> = Box::new(vec![]);
+
+        self.expect_current_token(Token::LParen);
+
+        if self.peek() == Token::RParen {
+            self.next();
+            self.next();
+            return parameters;
+        }
+
+        self.next();
+        while self.peek() != Token::RParen {
+            let identifier = match self.next() {
+                Token::Ident(i) => Identifier::new(Box::new(i)),
+                _ => panic!("Unexpected function parameter")
+            };
+            parameters.push(identifier);
+
+            if self.peek() == Token::Comma {
+                self.next();
+            }
+
+            self.next();
+        }
+
+        self.expect_next_token(Token::RParen);
+        parameters
     }
 
     pub fn parse_statement(&mut self) -> Box<dyn Statement> {
