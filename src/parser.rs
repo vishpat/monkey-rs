@@ -182,8 +182,8 @@ impl Parser {
     }
 
     fn parse_if_expression(&mut self) -> Box<dyn Expression> {
-        self.expect_next_token(Token::If);
-        self.expect_next_token(Token::LParen);
+        self.expect_current_token(Token::If);
+        self.expect_current_token(Token::LParen);
         let condition = self.parse_expression(Precedence::Lowest);
         self.expect_next_token(Token::RParen);
         let true_block = self.parse_block_statement();
@@ -208,7 +208,7 @@ impl Parser {
             self.next();
         }
 
-        self.expect_next_token(Token::RBrace);
+        self.expect_current_token(Token::RBrace);
 
         BlockStatement::new(Box::new(statements))
     }
