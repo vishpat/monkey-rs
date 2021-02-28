@@ -323,19 +323,24 @@ impl Node for InfixExpression {
 pub struct IfExpression {
     pub cond: Box<dyn Expression>,
     pub true_block: Box<BlockStatement>,
-    pub false_block: Box<BlockStatement>,
+    pub false_block: Option<Box<BlockStatement>>,
 }
 
 impl IfExpression {
     pub fn new(cond: Box<dyn Expression>, true_block: Box<BlockStatement>,
-               false_block: Box<BlockStatement>) -> Box<IfExpression> {
+               false_block: Option<Box<BlockStatement>>) -> Box<IfExpression> {
         Box::new(IfExpression { cond, true_block, false_block })
     }
 }
 
 impl std::fmt::Display for IfExpression {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        write!(fmt, "if ({}) {} else {};", self.cond, self.true_block, self.false_block)
+        if self.false_block.is_some() {
+            write!(fmt, "if ({}) {{ {} }} else {{ {} }};", self.cond, self.true_block,
+                   self.false_block.as_ref().unwrap())
+        } else {
+            write!(fmt, "if ({}) {{ {} }};", self.cond, self.true_block)
+        }
     }
 }
 

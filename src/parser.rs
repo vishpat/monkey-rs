@@ -178,23 +178,23 @@ impl Parser {
         expr
     }
 
-//    fn parse_if_expression(&mut self) -> Box<dyn Expression> {
-//        trace!("Parse If Expression");
-//
-//        self.expect_next_token(Token::If);
-//        self.expect_next_token(Token::LParen);
-//        let condition = self.parse_expression(Token::Lowest);
-//        self.expect_next_token(Token::RParen);
-//        self.expect_next_token(Token::LBrace);
-//
-//        if self.peek() == Token::Else {
-//            self.next();
-//            self.expect_next_token(Token::LBrace);
-//
-//        }
-//
-//        IfExpression::new()
-//    }
+    fn parse_if_expression(&mut self) -> Box<dyn Expression> {
+        trace!("Parse If Expression");
+
+        self.expect_next_token(Token::If);
+        self.expect_next_token(Token::LParen);
+        let condition = self.parse_expression(Precedence::Lowest);
+        self.expect_next_token(Token::RParen);
+        let true_block = self.parse_block_statement();
+
+        let mut false_block: Option<Box<BlockStatement>> = None;
+        if self.peek() == Token::Else {
+            self.next();
+            false_block = Some(self.parse_block_statement());
+        }
+
+        IfExpression::new(condition, true_block, false_block)
+    }
 
     fn parse_block_statement(&mut self) -> Box<BlockStatement> {
         let mut statements: Vec<Box<dyn Statement>> = vec![];
@@ -237,7 +237,7 @@ impl Parser {
             Token::True | Token::False => self.parse_boolean(),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::LParen => self.parse_group_expression(),
-            Token::If => unimplemented!(),
+            Token::If => self.parse_if_expression(),
             Token::Function => unimplemented!(),
             _ => panic!("Invalid token in expression {}", t)
         };
@@ -288,7 +288,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode, ReturnStatement, PrefixExpression, BlockStatement};
+    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode, ReturnStatement, PrefixExpression, BlockStatement, ExpressionStatement, IfExpression};
     use crate::lexer::{Lexer, Token};
     use crate::parser::Parser;
     use std::any::Any;
@@ -611,5 +611,54 @@ mod tests {
 
             idx += 1;
         }
+    }
+
+    const TEST_IF_NO_ELSE_STR: &str = "
+        if (x > 10) {
+            let y = 10;
+            let z = 30;
+        }
+    ";
+
+    #[test]
+    fn test_parser_if_no_else() {
+        let lexer = Lexer::new(TEST_IF_NO_ELSE_STR);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+        let statements = program.statements;
+
+        println!("Parsed if statements\n{:?}", statements);
+        assert_eq!(statements.len(), 1);
+        let stmt = &statements[0];
+
+        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
+
+        let expr_stmt: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
+            Some(b) => b,
+            None => panic!("Invalid type, expected expression statement")
+        };
+
+        let expr = &expr_stmt.expr;
+        assert_eq!(AstNode::IfExpression, expr.ast_node_type());
+
+        let if_expr: &IfExpression = match expr.as_any().downcast_ref::<IfExpression>() {
+            Some(x) => x,
+            None => panic!("Expected if expression")
+        };
+
+        let cond = &if_expr.cond;
+        assert_eq!(format!("{}", cond), "(x > 10)");
+
+        let true_block = &if_expr.true_block;
+        let blk_statements = &true_block.block;
+
+        let statement1 = &blk_statements[0];
+        assert_eq!(format!("{}", statement1), "let y = 10;");
+
+        let statement2 = &blk_statements[1];
+        assert_eq!(format!("{}", statement2), "let z = 30;");
+
+        let false_block = &if_expr.false_block;
+        assert_eq!(false_block.is_none(), true);
     }
 }
