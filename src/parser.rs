@@ -173,7 +173,6 @@ impl Parser {
     }
 
     fn parse_if_expression(&mut self) -> Box<dyn Expression> {
-
         self.expect_next_token(Token::If);
         self.expect_next_token(Token::LParen);
         let condition = self.parse_expression(Precedence::Lowest);
@@ -181,8 +180,7 @@ impl Parser {
         let true_block = self.parse_block_statement();
 
         let mut false_block: Option<Box<BlockStatement>> = None;
-        if self.peek() == Token::Else {
-            self.next();
+        if self.curr_token == Token::Else {
             false_block = Some(self.parse_block_statement());
         }
 
@@ -549,9 +547,8 @@ mod tests {
     }
 
     const TEST_IF_NO_ELSE_STR: &str = "
-        if (x > 10) {
-            let y = 10;
-            let z = 30;
+        if (x > y) {
+            x
         }
     ";
 
@@ -563,11 +560,11 @@ mod tests {
         let statements = program.statements;
 
         assert_eq!(statements.len(), 1);
-        let stmt = &statements[0];
+        let mut stmt = &statements[0];
 
         assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
 
-        let expr_stmt: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
+        let mut expr_stmt: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
             Some(b) => b,
             None => panic!("Invalid type, expected expression statement")
         };
@@ -581,20 +578,77 @@ mod tests {
         };
 
         let cond = &if_expr.cond;
-        assert_eq!(format!("{}", cond), "(x > 10)");
+        assert_eq!(format!("{}", cond), "(x > y)");
 
         let true_block = &if_expr.true_block;
-        println!("{:?}",true_block);
 
-        let blk_statements = &true_block.block;
+        stmt = &true_block.block[0];
+        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
 
-        let statement1 = &blk_statements[0];
-        assert_eq!(format!("{}", statement1), "let y = 10;");
+        let expr_stmt2: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
+            Some(b) => b,
+            None => panic!("Invalid type, expected expression statement")
+        };
 
-        let statement2 = &blk_statements[1];
-        assert_eq!(format!("{}", statement2), "let z = 30;");
+        assert_eq!(format!("{}", expr_stmt2.expr), "x");
+    }
 
-        let false_block = &if_expr.false_block;
-        assert_eq!(false_block.is_none(), true);
+    const TEST_IF_ELSE_STR: &str = "
+        if (x > y) {
+            x
+        } else {
+            y
+        }
+    ";
+
+    #[test]
+    fn test_parser_if_else() {
+        let lexer = Lexer::new(TEST_IF_ELSE_STR);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+        let statements = program.statements;
+
+        assert_eq!(statements.len(), 1);
+        let mut stmt = &statements[0];
+
+        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
+
+        let mut expr_stmt: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
+            Some(b) => b,
+            None => panic!("Invalid type, expected expression statement")
+        };
+
+        let expr = &expr_stmt.expr;
+        assert_eq!(AstNode::IfExpression, expr.ast_node_type());
+
+        let if_expr: &IfExpression = match expr.as_any().downcast_ref::<IfExpression>() {
+            Some(x) => x,
+            None => panic!("Expected if expression")
+        };
+
+        let cond = &if_expr.cond;
+        assert_eq!(format!("{}", cond), "(x > y)");
+
+        let true_block = &if_expr.true_block;
+
+        stmt = &true_block.block[0];
+        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
+
+        let expr_stmt2: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
+            Some(b) => b,
+            None => panic!("Invalid type, expected expression statement")
+        };
+
+        assert_eq!(format!("{}", expr_stmt2.expr), "x");
+
+        let false_block = &if_expr.false_block.as_ref().unwrap();
+        stmt = &false_block.block[0];
+        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
+
+        let expr_stmt3: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
+            Some(b) => b,
+            None => panic!("Invalid type, expected expression statement")
+        };
+        assert_eq!(format!("{}", expr_stmt3.expr), "y");
     }
 }
