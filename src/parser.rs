@@ -237,7 +237,7 @@ impl Parser {
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::LParen => self.parse_group_expression(),
             Token::If => self.parse_if_expression(),
-            Token::Function => unimplemented!(),
+            Token::Function => self.parse_function(),
             _ => panic!("Invalid token in expression {}", t)
         };
 
@@ -270,11 +270,12 @@ impl Parser {
             return parameters;
         }
 
-        self.next();
-        while self.peek() != Token::RParen {
-            let identifier = match self.next() {
-                Token::Ident(i) => Identifier::new(Box::new(i)),
-                _ => panic!("Unexpected function parameter")
+        while self.curr_token != Token::RParen {
+            let idf = &self.curr_token;
+
+            let identifier = match idf {
+                Token::Ident(i) => Identifier::new(Box::new(i.to_string())),
+                _ => panic!("Unexpected function parameter {}", idf)
             };
             parameters.push(identifier);
 
@@ -285,8 +286,31 @@ impl Parser {
             self.next();
         }
 
-        self.expect_next_token(Token::RParen);
         parameters
+    }
+
+    pub fn parse_function(&mut self) -> Box<FunctionLiteral> {
+        self.expect_current_token(Token::Function);
+
+        let mut function_name = self.parse_identifier();
+        assert_eq!(function_name.ast_node_type(), AstNode::IdentifierExpression);
+
+        let expr: &Identifier = match function_name.as_any().downcast_ref::<Identifier>() {
+            Some(b) => b,
+            None => panic!("Invalid type")
+        };
+
+        let func_name = &expr.value;
+        let function_identifer = Identifier::new(Box::new(func_name.to_string()));
+
+
+        self.next();
+
+        let parameters = self.parse_function_parameters();
+        let body = self.parse_block_statement();
+
+
+        FunctionLiteral::new(function_identifer, parameters, body)
     }
 
     pub fn parse_statement(&mut self) -> Box<dyn Statement> {
@@ -313,7 +337,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode, ReturnStatement, PrefixExpression, BlockStatement, ExpressionStatement, IfExpression};
+    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode, ReturnStatement, PrefixExpression, BlockStatement, ExpressionStatement, IfExpression, FunctionLiteral};
     use crate::lexer::{Lexer, Token};
     use crate::parser::Parser;
     use std::any::Any;
@@ -689,5 +713,56 @@ mod tests {
             None => panic!("Invalid type, expected expression statement")
         };
         assert_eq!(format!("{}", expr_stmt3.expr), "(4 + (5 * y))");
+    }
+
+    const TEST_FUNCTION_STR: &str = "
+        fn sum(x,y) {
+            x + y;
+        }
+    ";
+
+    #[test]
+    fn test_parser_function() {
+        let mut lexer = Lexer::new(TEST_FUNCTION_STR);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+        let statements = program.statements;
+
+        assert_eq!(statements.len(), 1);
+        let mut stmt = &statements[0];
+
+        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
+
+        let mut expr_stmt: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
+            Some(b) => b,
+            None => panic!("Invalid type, expected expression statement")
+        };
+
+        let expr = &expr_stmt.expr;
+        assert_eq!(AstNode::FunctionLiteralExpression, expr.ast_node_type());
+        let mut func_literal : &FunctionLiteral = match expr.as_any().downcast_ref::<FunctionLiteral>() {
+            Some(b) => b,
+            None => panic!("Invalid type, expected expression statement")
+        };
+
+        assert_eq!(func_literal.name.value, Box::new(String::from("sum")));
+
+        let parameters = &func_literal.parameters;
+
+        let param1 = &parameters[0];
+        assert_eq!(param1.value, Box::new(String::from("x")));
+
+        let param2 = &parameters[1];
+        assert_eq!(param2.value, Box::new(String::from("y")));
+
+        let stmt = &func_literal.block.block[0];
+        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
+
+        let expr_stmt2: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
+            Some(b) => b,
+            None => panic!("Invalid type, expected expression statement")
+        };
+
+        assert_eq!(format!("{}", expr_stmt2.expr), "(x + y)");
     }
 }

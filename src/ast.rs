@@ -360,9 +360,15 @@ impl Node for IfExpression {
 // Function
 #[derive(Debug)]
 pub struct FunctionLiteral {
-    pub name: Identifier,
-    pub parameters: Box<Vec<Identifier>>,
+    pub name: Box<Identifier>,
+    pub parameters: Box<Vec<Box<Identifier>>>,
     pub block: Box<BlockStatement>,
+}
+
+impl FunctionLiteral {
+    pub fn new(name: Box<Identifier>, parameters: Box<Vec<Box<Identifier>>>, block: Box<BlockStatement>) -> Box<FunctionLiteral> {
+        Box::new(FunctionLiteral{name, parameters, block})
+    }
 }
 
 impl std::fmt::Display for FunctionLiteral {
