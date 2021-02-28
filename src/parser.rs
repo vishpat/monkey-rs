@@ -85,8 +85,20 @@ impl Parser {
         self.precedence(&self.next_token)
     }
 
-    pub fn expect_next_token(&mut self, token: Token) -> bool {
-        self.next() == token
+    pub fn expect_current_token(&mut self, token: Token) {
+        if self.curr_token == token {
+            self.next();
+        } else {
+            panic!("Did not find expected current token {}, found {}", token, self.curr_token);
+        }
+    }
+
+    pub fn expect_next_token(&mut self, token: Token) {
+        if self.peek() == token {
+           self.next();
+        } else {
+            panic!("Did not find expected next token {}, found {}", token, self.peek());
+        }
     }
 
     fn parse_let_statement(&mut self) -> Box<dyn Statement> {
@@ -98,10 +110,7 @@ impl Parser {
         };
 
         // Check assignment token
-        if self.expect_next_token(Token::Assign) == false {
-            panic!("Assignment token not found in let statement")
-        }
-
+        self.expect_next_token(Token::Assign);
         self.next();
 
         // Parse expression
@@ -165,7 +174,7 @@ impl Parser {
     }
 
     fn parse_group_expression(&mut self) -> Box<dyn Expression> {
-        self.expect_next_token(Token::LParen);
+        self.expect_current_token(Token::LParen);
         let expr = self.parse_expression(Precedence::Lowest);
         self.expect_next_token(Token::RParen);
 
