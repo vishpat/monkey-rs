@@ -634,9 +634,9 @@ mod tests {
 
     const TEST_IF_ELSE_STR: &str = "
         if (x > y) {
-            x
+            x*2 + 3
         } else {
-            y
+            4 + 5*y
         }
     ";
 
@@ -678,7 +678,7 @@ mod tests {
             None => panic!("Invalid type, expected expression statement")
         };
 
-        assert_eq!(format!("{}", expr_stmt2.expr), "x");
+        assert_eq!(format!("{}", expr_stmt2.expr), "((x * 2) + 3)");
 
         let false_block = &if_expr.false_block.as_ref().unwrap();
         stmt = &false_block.block[0];
@@ -688,6 +688,6 @@ mod tests {
             Some(b) => b,
             None => panic!("Invalid type, expected expression statement")
         };
-        assert_eq!(format!("{}", expr_stmt3.expr), "y");
+        assert_eq!(format!("{}", expr_stmt3.expr), "(4 + (5 * y))");
     }
 }
