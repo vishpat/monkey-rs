@@ -251,12 +251,42 @@ impl Parser {
                     self.next();
                     InfixExpression::new(left, Box::new(token.clone()),
                                          self.parse_expression(self.precedence(&token)))
-                }
+                },
+                Token::LParen => unimplemented!(),
                 _ => left
             };
         }
 
         left
+    }
+
+    pub fn parse_call_parameters(&mut self) -> Box<Vec<Box<dyn Expression>>> {
+        let mut parameters: Box<Vec<Box<dyn Expression>>> = Box::new(vec![]);
+        self.expect_current_token(Token::LParen);
+
+        if self.peek() == Token::RParen {
+            self.next();
+            self.next();
+            return parameters;
+        }
+
+        while self.curr_token != Token::RParen {
+            let expr = self.parse_expression(Precedence::Lowest);
+            parameters.push(expr);
+
+            if self.peek() == Token::Comma {
+                self.next();
+            }
+
+            self.next();
+        }
+
+        parameters
+    }
+
+    pub fn parse_function_call(&mut self, identifier: Identifier) -> Box<CallExpression> {
+        let parameters = self.parse_call_parameters();
+        CallExpression::new(Box::new(identifier), parameters)
     }
 
     pub fn parse_function_parameters(&mut self) -> Box<Vec<Box<Identifier>>> {
@@ -337,7 +367,9 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode, ReturnStatement, PrefixExpression, BlockStatement, ExpressionStatement, IfExpression, FunctionLiteral, Statement};
+    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode, ReturnStatement,
+                     PrefixExpression, BlockStatement, ExpressionStatement, IfExpression,
+                     FunctionLiteral, Statement};
     use crate::lexer::{Lexer, Token};
     use crate::parser::Parser;
     use std::any::Any;
@@ -696,7 +728,7 @@ mod tests {
         assert_eq!(format!("{}", expr_stmt3.expr), "(4 + (5 * y))");
     }
 
-    const TEST_FUNCTION_STR: &str = "
+    const TEST_FUNCTION_STR1: &str = "
         fn sum(x,y) {
             x + y;
         }
@@ -704,7 +736,7 @@ mod tests {
 
     #[test]
     fn test_parser_function() {
-        let statements = test_case_statements(TEST_FUNCTION_STR);
+        let statements = test_case_statements(TEST_FUNCTION_STR1);
         assert_eq!(statements.len(), 1);
         let mut stmt = &statements[0];
 
@@ -741,5 +773,47 @@ mod tests {
         };
 
         assert_eq!(format!("{}", expr_stmt2.expr), "(x + y)");
+    }
+
+    const TEST_FUNCTION_STR2: &str = "
+        fn sum() {
+            10*20;
+        }
+    ";
+
+    #[test]
+    fn test_parser_function_no_parameters() {
+        let statements = test_case_statements(TEST_FUNCTION_STR2);
+        assert_eq!(statements.len(), 1);
+        let mut stmt = &statements[0];
+
+        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
+
+        let mut expr_stmt: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
+            Some(b) => b,
+            None => panic!("Invalid type, expected expression statement")
+        };
+
+        let expr = &expr_stmt.expr;
+        assert_eq!(AstNode::FunctionLiteralExpression, expr.ast_node_type());
+        let mut func_literal : &FunctionLiteral = match expr.as_any().downcast_ref::<FunctionLiteral>() {
+            Some(b) => b,
+            None => panic!("Invalid type, expected expression statement")
+        };
+
+        assert_eq!(func_literal.name.value, Box::new(String::from("sum")));
+
+        let parameters = &func_literal.parameters;
+        assert_eq!(parameters.len(), 0);
+
+        let stmt = &func_literal.block.block[0];
+        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
+
+        let expr_stmt2: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
+            Some(b) => b,
+            None => panic!("Invalid type, expected expression statement")
+        };
+
+        assert_eq!(format!("{}", expr_stmt2.expr), "(10 * 20)");
     }
 }

@@ -396,6 +396,12 @@ pub struct CallExpression {
     pub parameters: Box<Vec<Box<dyn Expression>>>,
 }
 
+impl CallExpression {
+    pub fn new(function: Box<Identifier>, parameters: Box<Vec<Box<dyn Expression>>>) -> Box<CallExpression> {
+        Box::new(CallExpression{function, parameters})
+    }
+}
+
 impl std::fmt::Display for CallExpression {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(fmt, "{}()", self.function);
