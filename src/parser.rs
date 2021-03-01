@@ -337,7 +337,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode, ReturnStatement, PrefixExpression, BlockStatement, ExpressionStatement, IfExpression, FunctionLiteral};
+    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode, ReturnStatement, PrefixExpression, BlockStatement, ExpressionStatement, IfExpression, FunctionLiteral, Statement};
     use crate::lexer::{Lexer, Token};
     use crate::parser::Parser;
     use std::any::Any;
@@ -377,6 +377,13 @@ mod tests {
         }
     }
 
+    fn test_case_statements(input: &str) -> Vec<Box<dyn Statement>> {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+        program.statements
+    }
+
     const TEST_LET_STATEMENTS_STR: &str = "
         let five = 5;
         let ten = 10;
@@ -387,10 +394,7 @@ mod tests {
 
     #[test]
     fn test_parser_let_statements() {
-        let lexer = Lexer::new(TEST_LET_STATEMENTS_STR);
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse_program().unwrap();
-        let statements = program.statements;
+        let statements = test_case_statements(TEST_LET_STATEMENTS_STR);
 
         assert_eq!(statements.len(), 5);
         let mut idx = 0;
@@ -422,11 +426,7 @@ mod tests {
 
     #[test]
     fn test_parser_return_statements() {
-        let lexer = Lexer::new(TEST_RETURN_STATEMENTS_STR);
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse_program().unwrap();
-        let statements = program.statements;
-
+        let statements = test_case_statements(TEST_RETURN_STATEMENTS_STR);
         assert_eq!(statements.len(), 2);
 
         let mut idx = 0;
@@ -456,10 +456,7 @@ mod tests {
 
     #[test]
     fn test_parser_integer_expressions() {
-        let lexer = Lexer::new(TEST_INTEGERS_STR);
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse_program().unwrap();
-        let statements = program.statements;
+        let statements = test_case_statements(TEST_INTEGERS_STR);
 
         assert_eq!(statements.len(), 2);
         let mut idx = 0;
@@ -495,10 +492,7 @@ mod tests {
 
     #[test]
     fn test_parser_boolean_expressions() {
-        let lexer = Lexer::new(TEST_BOOLEAN_STR);
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse_program().unwrap();
-        let statements = program.statements;
+        let statements = test_case_statements(TEST_BOOLEAN_STR);
 
         assert_eq!(statements.len(), 2);
         let mut idx = 0;
@@ -534,12 +528,9 @@ mod tests {
 
     #[test]
     fn test_parser_prefix_expressions() {
-        let lexer = Lexer::new(TEST_PREFIX_STR);
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse_program().unwrap();
-        let statements = program.statements;
-
+        let statements = test_case_statements(TEST_PREFIX_STR);
         assert_eq!(statements.len(), 2);
+
         let mut idx = 0;
         for stmt in statements.iter() {
             assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
@@ -583,12 +574,9 @@ mod tests {
 
     #[test]
     fn test_parser_grouped_expressions() {
-        let lexer = Lexer::new(TEST_GROUPED_EXPRESSION_STR);
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse_program().unwrap();
-        let statements = program.statements;
-
+        let statements = test_case_statements(TEST_GROUPED_EXPRESSION_STR);
         assert_eq!(statements.len(), 3);
+
         let mut idx = 0;
         for stmt in statements.iter() {
             assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
@@ -617,10 +605,7 @@ mod tests {
 
     #[test]
     fn test_parser_if_no_else() {
-        let lexer = Lexer::new(TEST_IF_NO_ELSE_STR);
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse_program().unwrap();
-        let statements = program.statements;
+        let statements = test_case_statements(TEST_IF_NO_ELSE_STR);
 
         assert_eq!(statements.len(), 1);
         let mut stmt = &statements[0];
@@ -666,11 +651,7 @@ mod tests {
 
     #[test]
     fn test_parser_if_else() {
-        let lexer = Lexer::new(TEST_IF_ELSE_STR);
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse_program().unwrap();
-        let statements = program.statements;
-
+        let statements = test_case_statements(TEST_IF_ELSE_STR);
         assert_eq!(statements.len(), 1);
         let mut stmt = &statements[0];
 
@@ -723,11 +704,7 @@ mod tests {
 
     #[test]
     fn test_parser_function() {
-        let mut lexer = Lexer::new(TEST_FUNCTION_STR);
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse_program().unwrap();
-        let statements = program.statements;
-
+        let statements = test_case_statements(TEST_FUNCTION_STR);
         assert_eq!(statements.len(), 1);
         let mut stmt = &statements[0];
 
