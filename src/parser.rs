@@ -252,7 +252,14 @@ impl Parser {
                     InfixExpression::new(left, Box::new(token.clone()),
                                          self.parse_expression(self.precedence(&token)))
                 },
-                Token::LParen => unimplemented!(),
+                Token::LParen => {
+                    let mut func_name: &Identifier = match left.as_any().downcast_ref::<Identifier>() {
+                        Some(b) => b,
+                        None => panic!("Invalid type, expected identifier for statement")
+                    };
+
+                    self.parse_function_call(func_name.value.to_string())
+                },
                 _ => left
             };
         }
@@ -284,9 +291,10 @@ impl Parser {
         parameters
     }
 
-    pub fn parse_function_call(&mut self, identifier: Identifier) -> Box<CallExpression> {
+    pub fn parse_function_call(&mut self, fn_name: String) -> Box<CallExpression> {
         let parameters = self.parse_call_parameters();
-        CallExpression::new(Box::new(identifier), parameters)
+        CallExpression::new(Identifier::new(Box::new(fn_name)),
+                            parameters)
     }
 
     pub fn parse_function_parameters(&mut self) -> Box<Vec<Box<Identifier>>> {
@@ -367,9 +375,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode, ReturnStatement,
-                     PrefixExpression, BlockStatement, ExpressionStatement, IfExpression,
-                     FunctionLiteral, Statement};
+    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode, ReturnStatement, PrefixExpression, BlockStatement, ExpressionStatement, IfExpression, FunctionLiteral, Statement, CallExpression};
     use crate::lexer::{Lexer, Token};
     use crate::parser::Parser;
     use std::any::Any;
@@ -815,5 +821,65 @@ mod tests {
         };
 
         assert_eq!(format!("{}", expr_stmt2.expr), "(10 * 20)");
+    }
+
+    const TEST_FUNCTION_CALL_STR: &str = "
+        sum();
+        sum3(x, y, z);
+        sum_expr(x, y + w, z);
+    ";
+
+    #[test]
+    fn test_parser_call_with_parameters() {
+        let statements = test_case_statements(TEST_FUNCTION_CALL_STR);
+
+        // sum()
+        let expr_stmt: &ExpressionStatement= match statements[0].as_any().downcast_ref::<ExpressionStatement>() {
+            Some(e) => e,
+            None => panic!("Invalid expression statement {}", statements[0])
+        };
+
+        let call_expr = match expr_stmt.expr.as_any().downcast_ref::<CallExpression>() {
+            Some(c) => c,
+            None => panic!("Invalid call expression {}", expr_stmt.expr)
+        };
+
+        assert_eq!(call_expr.function.to_string(), "sum");
+        assert_eq!(call_expr.parameters.len(), 0);
+
+        // sum(x, y, z)
+        let expr_stmt2: &ExpressionStatement= match statements[1].as_any().downcast_ref::<ExpressionStatement>() {
+            Some(e) => e,
+            None => panic!("Invalid expression statement {}", statements[0])
+        };
+
+        let call_expr2 = match expr_stmt2.expr.as_any().downcast_ref::<CallExpression>() {
+            Some(c) => c,
+            None => panic!("Invalid call expression {}", expr_stmt2.expr)
+        };
+
+        assert_eq!(call_expr2.function.to_string(), "sum3");
+        assert_eq!(call_expr2.parameters.len(), 3);
+
+        let param1 = &call_expr2.parameters[0];
+        let param1_id = match param1.as_any().downcast_ref::<Identifier>() {
+            Some(i)=> i,
+            None => panic!("Invalid param {}", param1)
+        };
+        assert_eq!(param1_id.value, Box::new("x".to_string()));
+
+        let param2 = &call_expr2.parameters[1];
+        let param2_id = match param2.as_any().downcast_ref::<Identifier>() {
+            Some(i)=> i,
+            None => panic!("Invalid param {}", param2)
+        };
+        assert_eq!(param2_id.value, Box::new("y".to_string()));
+
+        let param3 = &call_expr2.parameters[2];
+        let param3_id = match param3.as_any().downcast_ref::<Identifier>() {
+            Some(i)=> i,
+            None => panic!("Invalid param {}", param3)
+        };
+        assert_eq!(param3_id.value, Box::new("z".to_string()));
     }
 }
