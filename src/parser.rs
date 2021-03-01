@@ -850,7 +850,7 @@ mod tests {
         // sum(x, y, z)
         let expr_stmt2: &ExpressionStatement= match statements[1].as_any().downcast_ref::<ExpressionStatement>() {
             Some(e) => e,
-            None => panic!("Invalid expression statement {}", statements[0])
+            None => panic!("Invalid expression statement {}", statements[1])
         };
 
         let call_expr2 = match expr_stmt2.expr.as_any().downcast_ref::<CallExpression>() {
@@ -881,5 +881,20 @@ mod tests {
             None => panic!("Invalid param {}", param3)
         };
         assert_eq!(param3_id.value, Box::new("z".to_string()));
+
+        // sum_expr(x, y + w, z);
+        let expr_stmt3: &ExpressionStatement= match statements[2].as_any().downcast_ref::<ExpressionStatement>() {
+            Some(e) => e,
+            None => panic!("Invalid expression statement {}", statements[2])
+        };
+
+        let call_expr3 = match expr_stmt3.expr.as_any().downcast_ref::<CallExpression>() {
+            Some(c) => c,
+            None => panic!("Invalid call expression {}", expr_stmt3.expr)
+        };
+
+        assert_eq!(call_expr3.function.to_string(), "sum_expr");
+        assert_eq!(call_expr3.parameters.len(), 3);
+
     }
 }
