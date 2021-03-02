@@ -360,20 +360,19 @@ impl Node for IfExpression {
 // Function
 #[derive(Debug)]
 pub struct FunctionLiteral {
-    pub name: Box<Identifier>,
     pub parameters: Box<Vec<Box<Identifier>>>,
     pub block: Box<BlockStatement>,
 }
 
 impl FunctionLiteral {
-    pub fn new(name: Box<Identifier>, parameters: Box<Vec<Box<Identifier>>>, block: Box<BlockStatement>) -> Box<FunctionLiteral> {
-        Box::new(FunctionLiteral{name, parameters, block})
+    pub fn new(parameters: Box<Vec<Box<Identifier>>>, block: Box<BlockStatement>) -> Box<FunctionLiteral> {
+        Box::new(FunctionLiteral{parameters, block})
     }
 }
 
 impl std::fmt::Display for FunctionLiteral {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        write!(fmt, "fn {} {}", self.name, self.block)
+        write!(fmt, "fn {:?} {}", self.parameters, self.block)
     }
 }
 

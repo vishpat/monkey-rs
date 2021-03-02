@@ -95,7 +95,7 @@ impl Parser {
 
     pub fn expect_next_token(&mut self, token: Token) {
         if self.peek() == token {
-           self.next();
+            self.next();
         } else {
             panic!("Did not find expected next token {}, found {}", token, self.peek());
         }
@@ -251,7 +251,7 @@ impl Parser {
                     self.next();
                     InfixExpression::new(left, Box::new(token.clone()),
                                          self.parse_expression(self.precedence(&token)))
-                },
+                }
                 Token::LParen => {
                     let mut func_name: &Identifier = match left.as_any().downcast_ref::<Identifier>() {
                         Some(b) => b,
@@ -259,7 +259,7 @@ impl Parser {
                     };
 
                     self.parse_function_call(func_name.value.to_string())
-                },
+                }
                 _ => left
             };
         }
@@ -330,25 +330,10 @@ impl Parser {
     pub fn parse_function(&mut self) -> Box<FunctionLiteral> {
         self.expect_current_token(Token::Function);
 
-        let mut function_name = self.parse_identifier();
-        assert_eq!(function_name.ast_node_type(), AstNode::IdentifierExpression);
-
-        let expr: &Identifier = match function_name.as_any().downcast_ref::<Identifier>() {
-            Some(b) => b,
-            None => panic!("Invalid type")
-        };
-
-        let func_name = &expr.value;
-        let function_identifer = Identifier::new(Box::new(func_name.to_string()));
-
-
-        self.next();
-
         let parameters = self.parse_function_parameters();
         let body = self.parse_block_statement();
 
-
-        FunctionLiteral::new(function_identifer, parameters, body)
+        FunctionLiteral::new(parameters, body)
     }
 
     pub fn parse_statement(&mut self) -> Box<dyn Statement> {
@@ -735,7 +720,7 @@ mod tests {
     }
 
     const TEST_FUNCTION_STR1: &str = "
-        fn sum(x,y) {
+        fn(x,y) {
             x + y;
         }
     ";
@@ -755,12 +740,10 @@ mod tests {
 
         let expr = &expr_stmt.expr;
         assert_eq!(AstNode::FunctionLiteralExpression, expr.ast_node_type());
-        let mut func_literal : &FunctionLiteral = match expr.as_any().downcast_ref::<FunctionLiteral>() {
+        let mut func_literal: &FunctionLiteral = match expr.as_any().downcast_ref::<FunctionLiteral>() {
             Some(b) => b,
             None => panic!("Invalid type, expected expression statement")
         };
-
-        assert_eq!(func_literal.name.value, Box::new(String::from("sum")));
 
         let parameters = &func_literal.parameters;
 
@@ -782,7 +765,7 @@ mod tests {
     }
 
     const TEST_FUNCTION_STR2: &str = "
-        fn sum() {
+        fn() {
             10*20;
         }
     ";
@@ -802,12 +785,10 @@ mod tests {
 
         let expr = &expr_stmt.expr;
         assert_eq!(AstNode::FunctionLiteralExpression, expr.ast_node_type());
-        let mut func_literal : &FunctionLiteral = match expr.as_any().downcast_ref::<FunctionLiteral>() {
+        let mut func_literal: &FunctionLiteral = match expr.as_any().downcast_ref::<FunctionLiteral>() {
             Some(b) => b,
             None => panic!("Invalid type, expected expression statement")
         };
-
-        assert_eq!(func_literal.name.value, Box::new(String::from("sum")));
 
         let parameters = &func_literal.parameters;
         assert_eq!(parameters.len(), 0);
@@ -834,7 +815,7 @@ mod tests {
         let statements = test_case_statements(TEST_FUNCTION_CALL_STR);
 
         // sum()
-        let expr_stmt: &ExpressionStatement= match statements[0].as_any().downcast_ref::<ExpressionStatement>() {
+        let expr_stmt: &ExpressionStatement = match statements[0].as_any().downcast_ref::<ExpressionStatement>() {
             Some(e) => e,
             None => panic!("Invalid expression statement {}", statements[0])
         };
@@ -848,7 +829,7 @@ mod tests {
         assert_eq!(call_expr.parameters.len(), 0);
 
         // sum(x, y, z)
-        let expr_stmt2: &ExpressionStatement= match statements[1].as_any().downcast_ref::<ExpressionStatement>() {
+        let expr_stmt2: &ExpressionStatement = match statements[1].as_any().downcast_ref::<ExpressionStatement>() {
             Some(e) => e,
             None => panic!("Invalid expression statement {}", statements[1])
         };
@@ -863,27 +844,27 @@ mod tests {
 
         let param1 = &call_expr2.parameters[0];
         let param1_id = match param1.as_any().downcast_ref::<Identifier>() {
-            Some(i)=> i,
+            Some(i) => i,
             None => panic!("Invalid param {}", param1)
         };
         assert_eq!(param1_id.value, Box::new("x".to_string()));
 
         let param2 = &call_expr2.parameters[1];
         let param2_id = match param2.as_any().downcast_ref::<Identifier>() {
-            Some(i)=> i,
+            Some(i) => i,
             None => panic!("Invalid param {}", param2)
         };
         assert_eq!(param2_id.value, Box::new("y".to_string()));
 
         let param3 = &call_expr2.parameters[2];
         let param3_id = match param3.as_any().downcast_ref::<Identifier>() {
-            Some(i)=> i,
+            Some(i) => i,
             None => panic!("Invalid param {}", param3)
         };
         assert_eq!(param3_id.value, Box::new("z".to_string()));
 
         // sum_expr(x, y + w, z);
-        let expr_stmt3: &ExpressionStatement= match statements[2].as_any().downcast_ref::<ExpressionStatement>() {
+        let expr_stmt3: &ExpressionStatement = match statements[2].as_any().downcast_ref::<ExpressionStatement>() {
             Some(e) => e,
             None => panic!("Invalid expression statement {}", statements[2])
         };
@@ -895,6 +876,5 @@ mod tests {
 
         assert_eq!(call_expr3.function.to_string(), "sum_expr");
         assert_eq!(call_expr3.parameters.len(), 3);
-
     }
 }
