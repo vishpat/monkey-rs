@@ -1,12 +1,5 @@
 use crate::lexer::{Lexer, Token};
 use crate::ast::*;
-
-#[cfg(not(test))]
-use log::{info, warn};
-
-#[cfg(test)]
-use std::{println as trace, println as debug, println as info, println as warn};
-
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Display};
@@ -14,7 +7,7 @@ use std::collections::HashMap;
 use crate::ast::AstNode::IdentifierExpression;
 
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd)]
-enum Precedence {
+pub enum Precedence {
     Lowest,
     Equals,
     LessGreater,
@@ -25,7 +18,7 @@ enum Precedence {
 }
 
 #[derive(Debug)]
-struct ParseError {
+pub struct ParseError {
     token: Token,
 }
 
@@ -35,7 +28,7 @@ impl fmt::Display for ParseError {
     }
 }
 
-struct Parser {
+pub(crate) struct Parser {
     lexer: Box<Lexer>,
     curr_token: Token,
     next_token: Token,

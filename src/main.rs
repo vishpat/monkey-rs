@@ -1,28 +1,22 @@
 mod lexer;
 mod ast;
 mod parser;
-
-const TEST_STR: &str = "
-    let five = 5;
-    let ten = 10;
-
-    let add = fn(x, y) {
-      x + y;
-    };
-
-    let result = add(five, ten);
-    !-/*5;
-    5 < 10 > 5;
-
-    if (5 < 10) {
-      return true;
-    } else {
-      return false;
-    }
-
-    10 == 10;
-    10 != 9;
-";
+use linefeed::{Interface, ReadResult};
+use crate::lexer::Lexer;
 
 fn main() {
+
+    let mut reader = Interface::new("monkey-rs").unwrap();
+
+    reader.set_prompt("monkey-rs> ").unwrap();
+
+    while let ReadResult::Input(input) = reader.read_line().unwrap() {
+        let lexer = Lexer::new(&*input);
+        let mut parser = parser::Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+
+        println!("{:?}", program.statements);
+    }
+
+    println!("Good bye");
 }
