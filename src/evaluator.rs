@@ -82,19 +82,19 @@ pub fn eval_infix_expression(node: &dyn Node) -> Box<dyn Object> {
     };
 
     let op = infix_expr.op.as_ref();
-    let left = infix_expr.left.as_ref();
-    let right = infix_expr.right.as_ref();
+    let left = eval(infix_expr.left.node());
+    let right = eval(infix_expr.right.node());
 
     match op {
         Token::Plus | Token::Minus | Token::Asterik | Token::Slash |
         Token::Lt | Token::Gt | Token::Eq | Token::NotEq => {
-            let left_val = match left.node().ast_node_type() {
-                AstNode::IntegerExpression => left.as_any().downcast_ref::<Integer>().unwrap().value ,
-                _ => panic!("Invalid left val in {:?}, expected Integer", left.ast_node_type())
+            let left_val = match left.obj_type() {
+                ObjectType::Integer => left.as_any().downcast_ref::<Integer>().unwrap().value ,
+                _ => panic!("Invalid left val in {:?}, expected Integer", left.obj_type())
             };
-            let right_val = match right.node().ast_node_type() {
-                AstNode::IntegerExpression => right.as_any().downcast_ref::<Integer>().unwrap().value,
-                _ => panic!("Invalid right val in {:?}, expected Integer", right.ast_node_type())
+            let right_val = match right.obj_type() {
+                ObjectType::Integer => right.as_any().downcast_ref::<Integer>().unwrap().value,
+                _ => panic!("Invalid right val in {:?}, expected Integer", right.obj_type())
             };
             match op {
                 Token::Plus => Integer::new(left_val + right_val),
@@ -212,6 +212,7 @@ mod tests {
         test_cases.push(PrefixTestStruct::new(String::from("!!false"), false));
         test_cases.push(PrefixTestStruct::new(String::from("!!!false"), true));
         test_cases.push(PrefixTestStruct::new(String::from("!!!(4 > 2)"), false));
+        test_cases.push(PrefixTestStruct::new(String::from("!!!(2 + 3 > 2)"), false));
 
         for tc in test_cases {
             let bool_obj = test_eval_program(tc.bool_str.as_str());
@@ -274,8 +275,9 @@ mod tests {
         test_cases.push(InfixTestStruct::new(String::from("4 < 2"), false));
         test_cases.push(InfixTestStruct::new(String::from("5 == 3"), false));
         test_cases.push(InfixTestStruct::new(String::from("4 != 2"), true));
-        test_cases.push(InfixTestStruct::new(String::from("5 != 5"), false));
+        test_cases.push(InfixTestStruct::new(String::from("(2*2 + 1) != 5"), false));
         test_cases.push(InfixTestStruct::new(String::from("5 == 5"), true));
+        test_cases.push(InfixTestStruct::new(String::from("(2 + 3) == 5"), true));
 
 
         for tc in test_cases {
