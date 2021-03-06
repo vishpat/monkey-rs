@@ -52,7 +52,6 @@ pub fn eval(node: &dyn Node) -> Box<dyn Object> {
 }
 
 pub fn eval_prefix_expression(op: &Token, expr: &dyn Node) -> Box<dyn Object> {
-
     match op {
         Token::Bang => {
             match expr.as_any().downcast_ref::<Boolean>() {
@@ -71,6 +70,7 @@ pub fn eval_prefix_expression(op: &Token, expr: &dyn Node) -> Box<dyn Object> {
             }
         },
         _ => panic!("Invalid prefix operator {}", op)
+
     }
 }
 
@@ -166,7 +166,6 @@ mod tests {
         let mut test_cases: Vec<PrefixTestStruct> = vec![];
         test_cases.push(PrefixTestStruct::new(String::from("!true"), false));
         test_cases.push(PrefixTestStruct::new(String::from("!false"), true));
-        test_cases.push(PrefixTestStruct::new(String::from("!!false"), false));
 
         for tc in test_cases {
             let bool_obj = test_eval_program(tc.bool_str.as_str());
