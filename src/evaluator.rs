@@ -122,11 +122,11 @@ mod tests {
     fn test_eval_integer_expression() {
         struct IntTestStruct {
             int_str: String,
-            int_val: usize,
+            int_val: i64,
         }
 
         impl IntTestStruct {
-            fn new(int_str: String, int_val: usize) -> IntTestStruct {
+            fn new(int_str: String, int_val: i64) -> IntTestStruct {
                 IntTestStruct { int_str, int_val }
             }
         }

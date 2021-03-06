@@ -8,7 +8,7 @@ pub enum Token {
 
     // Identifiers + Literals
     Ident(String),
-    Int(usize),
+    Int(i64),
 
     // Operators
     Assign,
@@ -191,7 +191,7 @@ impl Lexer {
                 }
 
                 if start < index {
-                    tokens.push(Token::Int(input[start..index].to_string().parse::<usize>().unwrap()));
+                    tokens.push(Token::Int(input[start..index].to_string().parse::<i64>().unwrap()));
                 }
             }
         }

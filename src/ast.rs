@@ -267,11 +267,11 @@ impl Node for Boolean {
 // Int
 #[derive(Debug)]
 pub struct Integer {
-    pub value: usize
+    pub value: i64
 }
 
 impl Integer {
-    pub fn new(val: usize) -> Box<Integer> {
+    pub fn new(val: i64) -> Box<Integer> {
         Box::new(Integer { value: val })
     }
 }
