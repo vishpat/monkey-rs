@@ -14,54 +14,59 @@ pub fn eval(node: &dyn Node) -> Box<dyn Object> {
         AstNode::BooleanExpression => eval_bool_expr(node),
         AstNode::ExpressionStatement => eval_expr_stmt(node),
         AstNode::PrefixExpression => eval_prefix_expression(node),
+        AstNode::InfixExpression => eval_infix_expression(node),
         AstNode::Program => eval_program(node),
         _ => panic!("Unrecognized AST node {:?}", node)
     }
 }
 
 pub fn eval_bool_expr(node: &dyn Node) -> Box<dyn Object> {
-    match node.as_any().downcast_ref::<Boolean>() {
-        Some(b) => Boolean::new(b.value),
+    match node.ast_node_type() {
+        AstNode::BooleanExpression =>
+            Boolean::new(node.as_any().downcast_ref::<Boolean>().unwrap().value),
         _ => panic!("Eval: Invalid boolean expression {:?}", node)
     }
 }
 
 pub fn eval_int_expr(node: &dyn Node) -> Box<dyn Object> {
-    match node.as_any().downcast_ref::<Integer>() {
-        Some(i) => Integer::new(i.value),
+    match node.ast_node_type() {
+        AstNode::IntegerExpression =>
+            Integer::new(node.as_any().downcast_ref::<Integer>().unwrap().value),
         _ => panic!("Eval: Invalid integer expression {:?}", node)
     }
 }
 
 pub fn eval_expr_stmt(node: &dyn Node) -> Box<dyn Object> {
-    match node.as_any().downcast_ref::<ExpressionStatement>() {
-        Some(expr_stmt) => eval(expr_stmt.expr.node()),
+    match node.ast_node_type() {
+        AstNode::ExpressionStatement =>
+            eval(node.as_any().downcast_ref::<ExpressionStatement>().unwrap().expr.node()),
         _ => panic!("Eval: Invalid boolean expression {:?}", node)
     }
 }
 
 pub fn eval_prefix_expression(node: &dyn Node) -> Box<dyn Object> {
-    let prefix_expr: &PrefixExpression = match node.as_any().downcast_ref::<PrefixExpression>() {
-        Some(prefix_expr) => prefix_expr,
+
+    let prefix_expr: &PrefixExpression = match node.ast_node_type() {
+        AstNode::PrefixExpression => node.as_any().downcast_ref::<PrefixExpression>().unwrap(),
         _ => panic!("Eval: Invalid boolean expression {:?}", node)
     };
 
     let op = prefix_expr.op.as_ref();
-    let expr = prefix_expr.expr.as_ref();
+    let mut expr = prefix_expr.expr.as_ref();
+    let expr_evaluated = eval(expr.node());
 
     match op {
         Token::Bang => {
-            match expr.as_any().downcast_ref::<Boolean>() {
-                Some(b) => {
-                    Boolean::new(!b.value)
-                }
+            match expr_evaluated.obj_type() {
+                ObjectType::Boolean =>
+                    Boolean::new(!expr_evaluated.as_any().downcast_ref::<Boolean>().unwrap().value),
                 _ => panic!("Invalid prefix expression type {:?}, expected bool", expr.ast_node_type())
             }
         }
         Token::Minus => {
-            match expr.as_any().downcast_ref::<Integer>() {
-                Some(i) => {
-                    Integer::new(i.value * -1)
+            match expr_evaluated.obj_type() {
+                ObjectType::Integer => {
+                    Integer::new(expr.as_any().downcast_ref::<Integer>().unwrap().value*-1)
                 }
                 _ => panic!("Invalid prefix expression type {:?}, expected int", expr.ast_node_type())
             }
@@ -83,13 +88,13 @@ pub fn eval_infix_expression(node: &dyn Node) -> Box<dyn Object> {
     match op {
         Token::Plus | Token::Minus | Token::Asterik | Token::Slash |
         Token::Lt | Token::Gt | Token::Eq | Token::NotEq => {
-            let left_val = match left.as_any().downcast_ref::<Integer>() {
-                Some(i) => i,
-                _ => panic!("Invalid left val in {:?}, expected Integer", infix_expr)
+            let left_val = match left.node().ast_node_type() {
+                AstNode::IntegerExpression => left.as_any().downcast_ref::<Integer>().unwrap().value ,
+                _ => panic!("Invalid left val in {:?}, expected Integer", left.ast_node_type())
             };
-            let right_val = match right.as_any().downcast_ref::<Integer>() {
-                Some(i) => i,
-                _ => panic!("Invalid right val in {:?}, expected Integer", infix_expr)
+            let right_val = match right.node().ast_node_type() {
+                AstNode::IntegerExpression => right.as_any().downcast_ref::<Integer>().unwrap().value,
+                _ => panic!("Invalid right val in {:?}, expected Integer", right.ast_node_type())
             };
             match op {
                 Token::Plus => Integer::new(left_val + right_val),
@@ -204,6 +209,9 @@ mod tests {
         let mut test_cases: Vec<PrefixTestStruct> = vec![];
         test_cases.push(PrefixTestStruct::new(String::from("!true"), false));
         test_cases.push(PrefixTestStruct::new(String::from("!false"), true));
+        test_cases.push(PrefixTestStruct::new(String::from("!!false"), false));
+        test_cases.push(PrefixTestStruct::new(String::from("!!!false"), true));
+        test_cases.push(PrefixTestStruct::new(String::from("!!!(4 > 2)"), false));
 
         for tc in test_cases {
             let bool_obj = test_eval_program(tc.bool_str.as_str());
@@ -247,4 +255,70 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_eval_infix_bool_expression() {
+        struct InfixTestStruct {
+            bool_str: String,
+            bool_val: bool,
+        }
+
+        impl InfixTestStruct {
+            fn new(bool_str: String, bool_val: bool) -> InfixTestStruct {
+                InfixTestStruct { bool_str, bool_val }
+            }
+        }
+
+        let mut test_cases: Vec<InfixTestStruct> = vec![];
+        test_cases.push(InfixTestStruct::new(String::from("5 > 3"), true));
+        test_cases.push(InfixTestStruct::new(String::from("4 < 2"), false));
+        test_cases.push(InfixTestStruct::new(String::from("5 == 3"), false));
+        test_cases.push(InfixTestStruct::new(String::from("4 != 2"), true));
+        test_cases.push(InfixTestStruct::new(String::from("5 != 5"), false));
+        test_cases.push(InfixTestStruct::new(String::from("5 == 5"), true));
+
+
+        for tc in test_cases {
+            let bool_obj = test_eval_program(tc.bool_str.as_str());
+
+            assert_eq!(bool_obj.obj_type(), ObjectType::Boolean);
+            match bool_obj.as_any().downcast_ref::<Boolean>() {
+                Some(i) => {
+                    assert_eq!(i.value, tc.bool_val);
+                }
+                _ => panic!("Invalid type expected Boolean")
+            }
+        }
+    }
+
+    #[test]
+    fn test_eval_infix_int_expression() {
+        struct InfixTestStruct {
+            int_str: String,
+            int_val: i64,
+        }
+
+        impl InfixTestStruct {
+            fn new(int_str: String, int_val: i64) -> InfixTestStruct {
+                InfixTestStruct { int_str, int_val }
+            }
+        }
+
+        let mut test_cases: Vec<InfixTestStruct> = vec![];
+        test_cases.push(InfixTestStruct::new(String::from("-1"), -1));
+        test_cases.push(InfixTestStruct::new(String::from("-2"), -2));
+
+        for tc in test_cases {
+            let int_obj = test_eval_program(tc.int_str.as_str());
+
+            assert_eq!(int_obj.obj_type(), ObjectType::Integer);
+            match int_obj.as_any().downcast_ref::<Integer>() {
+                Some(i) => {
+                    assert_eq!(i.value, tc.int_val);
+                }
+                _ => panic!("Invalid type expected Integet")
+            }
+        }
+    }
+
 }
