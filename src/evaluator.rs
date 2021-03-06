@@ -88,7 +88,7 @@ pub fn eval_program(program: &Program) -> Box<dyn Object> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Statement, Boolean};
+    use crate::ast::{Statement, Boolean, Integer};
     use crate::lexer::Lexer;
     use crate::parser::Parser;
     use crate::evaluator::{eval, Object, ObjectType};
@@ -176,6 +176,36 @@ mod tests {
                     assert_eq!(i.value, tc.bool_val);
                 },
                 _ => panic!("Invalid type expected Boolean")
+            }
+        }
+    }
+
+    #[test]
+    fn test_eval_prefix_int_expression() {
+        struct PrefixTestStruct {
+            int_str: String,
+            int_val: i64,
+        }
+
+        impl PrefixTestStruct {
+            fn new(int_str: String, int_val: i64) -> PrefixTestStruct {
+                PrefixTestStruct { int_str, int_val }
+            }
+        }
+
+        let mut test_cases: Vec<PrefixTestStruct> = vec![];
+        test_cases.push(PrefixTestStruct::new(String::from("-1"), -1));
+        test_cases.push(PrefixTestStruct::new(String::from("-2"), -2));
+
+        for tc in test_cases {
+            let int_obj = test_eval_program(tc.int_str.as_str());
+
+            assert_eq!(int_obj.obj_type(), ObjectType::Integer);
+            match int_obj.as_any().downcast_ref::<Integer>() {
+                Some(i) => {
+                    assert_eq!(i.value, tc.int_val);
+                },
+                _ => panic!("Invalid type expected Integet")
             }
         }
     }
