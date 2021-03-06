@@ -1,6 +1,6 @@
 use std::any::Any;
 use crate::object::{Object, ObjectType, Error};
-use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement, Expression, InfixExpression, PrefixExpression};
+use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement, Expression, InfixExpression, PrefixExpression, Statement};
 use std::borrow::Borrow;
 use std::ops::Deref;
 use crate::lexer::Token;
@@ -10,17 +10,40 @@ pub fn eval(node: &dyn Node) -> Box<dyn Object> {
     println!("Evaluating {:?}", node);
 
     match node.ast_node_type() {
-        AstNode::ExpressionStatement => {
-            match node.as_any().downcast_ref::<ExpressionStatement>() {
-                Some(es) => eval_expression(es.expr.as_ref()),
-                _ => panic!("Eval: Invalid expression statement {:?}", node)
+
+        AstNode::IntegerExpression => {
+            match node.as_any().downcast_ref::<Integer>() {
+                Some(i) => Integer::new(i.value),
+                _ => panic!("Eval: Invalid integer expression {:?}", node)
+            }
+        },
+
+        AstNode::BooleanExpression => {
+            match node.as_any().downcast_ref::<Boolean>() {
+                Some(b) => Boolean::new(b.value),
+                _ => panic!("Eval: Invalid boolean expression {:?}", node)
+            }
+        },
+
+        AstNode::PrefixExpression => {
+            match node.as_any().downcast_ref::<PrefixExpression>() {
+                Some(prefix_expr) => eval_prefix_expression(&prefix_expr.op,
+                                                            prefix_expr.expr.node()),
+                _ => panic!("Eval: Invalid boolean expression {:?}", node)
             }
         }
+
+        AstNode::ExpressionStatement => {
+            match node.as_any().downcast_ref::<ExpressionStatement>() {
+                Some(expr_stmt) => eval(expr_stmt.expr.node()),
+                _ => panic!("Eval: Invalid boolean expression {:?}", node)
+            }
+        },
 
         AstNode::Program => {
             match node.as_any().downcast_ref::<Program>() {
                 Some(p) => eval_program(p),
-                _ => panic!("Eval: Invalid boolean expression {:?}", node)
+                _ => panic!("Eval: Invalid Program {:?}", node)
             }
         }
 
@@ -28,14 +51,15 @@ pub fn eval(node: &dyn Node) -> Box<dyn Object> {
     }
 }
 
-pub fn eval_prefix_expression(op: &Token, expr: &dyn Object) -> Box<dyn Object> {
+pub fn eval_prefix_expression(op: &Token, expr: &dyn Node) -> Box<dyn Object> {
+
     match op {
         Token::Bang => {
             match expr.as_any().downcast_ref::<Boolean>() {
                 Some(b) => {
                     Boolean::new(!b.value)
                 },
-                _ => panic!("Invalid prefix expression {}, expected bool", expr)
+                _ => panic!("Invalid prefix expression type {:?}, expected bool", expr.ast_node_type())
             }
         },
         Token::Minus => {
@@ -43,58 +67,18 @@ pub fn eval_prefix_expression(op: &Token, expr: &dyn Object) -> Box<dyn Object> 
                 Some(i) => {
                     Integer::new(i.value*-1)
                 },
-                _ => panic!("Invalid prefix expression {}, expected int", expr)
+                _ => panic!("Invalid prefix expression type {:?}, expected int", expr.ast_node_type())
             }
         },
         _ => panic!("Invalid prefix operator {}", op)
     }
 }
 
-
-pub fn eval_expression(expr: &dyn Expression) -> Box<dyn Object> {
-    let mut result: Box<dyn Object> = Error::new(String::from("Expression"));
-
-    match expr.ast_node_type() {
-
-        AstNode::IntegerExpression => {
-            result = match expr.as_any().downcast_ref::<Integer>() {
-                Some(i) => Integer::new(i.value),
-                _ => panic!("Eval: Invalid integer expression {:?}", expr)
-            }
-        },
-
-        AstNode::BooleanExpression=> {
-            result = match expr.as_any().downcast_ref::<Boolean>() {
-                Some(b) => Boolean::new(b.value),
-                _ => panic!("Eval: Invalid boolean expression {:?}", expr)
-            }
-        },
-
-        AstNode::PrefixExpression => {
-            result = match expr.as_any().downcast_ref::<PrefixExpression>() {
-                Some(prefix_expr) => {
-                    let right = eval(prefix_expr.expr.node());
-                    eval_prefix_expression(prefix_expr.op.as_ref(), right.as_ref())
-                },
-                _ => panic!("Eval: Invalid boolean expression {:?}", expr)
-            }
-        },
-
-        _ => unimplemented!("Unable to evaluate expression {}", expr)
-    }
-    result
-}
-
 pub fn eval_program(program: &Program) -> Box<dyn Object> {
     let mut result: Box<dyn Object> = Error::new(String::from("Program start"));
     for stmt in &program.statements {
-        match stmt.ast_node_type() {
-            AstNode::ExpressionStatement => {
-                result = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
-                    Some(expr_stmt) => eval(expr_stmt),
-                    _ => panic!("Eval: Invalid expression statement {:?}", stmt)
-                }
-            }
+        result = match stmt.ast_node_type() {
+            AstNode::ExpressionStatement => eval(stmt.node()),
             _ => unimplemented!("Unimplemented eval for {:?}", stmt)
         }
     }
@@ -104,7 +88,7 @@ pub fn eval_program(program: &Program) -> Box<dyn Object> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::Statement;
+    use crate::ast::{Statement, Boolean};
     use crate::lexer::Lexer;
     use crate::parser::Parser;
     use crate::evaluator::{eval, Object, ObjectType};
@@ -163,6 +147,37 @@ mod tests {
             let bool_obj = test_eval_program(tc.bool_str.as_str());
             assert_eq!(bool_obj.obj_type(), ObjectType::Boolean);
             assert_eq!(bool_obj.to_string(), tc.bool_str);
+        }
+    }
+
+    #[test]
+    fn test_eval_prefix_bool_expression() {
+        struct PrefixTestStruct {
+            bool_str: String,
+            bool_val: bool,
+        }
+
+        impl PrefixTestStruct {
+            fn new(bool_str: String, bool_val: bool) -> PrefixTestStruct {
+                PrefixTestStruct { bool_str, bool_val }
+            }
+        }
+
+        let mut test_cases: Vec<PrefixTestStruct> = vec![];
+        test_cases.push(PrefixTestStruct::new(String::from("!true"), false));
+        test_cases.push(PrefixTestStruct::new(String::from("!false"), true));
+        test_cases.push(PrefixTestStruct::new(String::from("!!false"), false));
+
+        for tc in test_cases {
+            let bool_obj = test_eval_program(tc.bool_str.as_str());
+
+            assert_eq!(bool_obj.obj_type(), ObjectType::Boolean);
+            match bool_obj.as_any().downcast_ref::<Boolean>() {
+                Some(i) => {
+                    assert_eq!(i.value, tc.bool_val);
+                },
+                _ => panic!("Invalid type expected Boolean")
+            }
         }
     }
 }
