@@ -66,7 +66,7 @@ pub fn eval_prefix_expression(node: &dyn Node) -> Box<dyn Object> {
         Token::Minus => {
             match expr_evaluated.obj_type() {
                 ObjectType::Integer => {
-                    Integer::new(expr.as_any().downcast_ref::<Integer>().unwrap().value*-1)
+                    Integer::new(expr_evaluated.as_any().downcast_ref::<Integer>().unwrap().value*-1)
                 }
                 _ => panic!("Invalid prefix expression type {:?}, expected int", expr.ast_node_type())
             }
@@ -243,6 +243,7 @@ mod tests {
         let mut test_cases: Vec<PrefixTestStruct> = vec![];
         test_cases.push(PrefixTestStruct::new(String::from("-1"), -1));
         test_cases.push(PrefixTestStruct::new(String::from("-2"), -2));
+        test_cases.push(PrefixTestStruct::new(String::from("-(2*3 + 2) + 2"), -6));
 
         for tc in test_cases {
             let int_obj = test_eval_program(tc.int_str.as_str());
