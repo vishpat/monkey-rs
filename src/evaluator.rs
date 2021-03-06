@@ -31,10 +31,18 @@ pub fn eval_expression(expr: &dyn Expression) -> Box<dyn Object> {
     let mut result: Box<dyn Object> = Error::new(String::from("Expression"));
 
     match expr.ast_node_type() {
+
         AstNode::IntegerExpression => {
             result = match expr.as_any().downcast_ref::<Integer>() {
                 Some(i) => Integer::new(i.value),
                 _ => panic!("Eval: Invalid integer expression {:?}", expr)
+            }
+        },
+
+        AstNode::BooleanExpression=> {
+            result = match expr.as_any().downcast_ref::<Boolean>() {
+                Some(b) => Boolean::new(b.value),
+                _ => panic!("Eval: Invalid boolean expression {:?}", expr)
             }
         },
         _ => unimplemented!("Unable to evaluate expression {}", expr)
@@ -67,6 +75,7 @@ mod tests {
     use crate::evaluator::{eval, Object, ObjectType};
 
     fn test_eval_program(input: &str) -> Box<dyn Object> {
+        println!("Test: Evaluating {}", input);
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program().unwrap();
@@ -95,6 +104,30 @@ mod tests {
             let int_obj = test_eval_program(tc.int_str.as_str());
             assert_eq!(int_obj.obj_type(), ObjectType::Integer);
             assert_eq!(int_obj.to_string(), tc.int_str);
+        }
+    }
+
+    #[test]
+    fn test_eval_boolean_expression() {
+        struct BoolTestStruct {
+            bool_str: String,
+            bool_val: bool,
+        }
+
+        impl BoolTestStruct {
+            fn new(bool_str: String, bool_val: bool) -> BoolTestStruct {
+                BoolTestStruct { bool_str, bool_val }
+            }
+        }
+
+        let mut test_cases: Vec<BoolTestStruct> = vec![];
+        test_cases.push(BoolTestStruct::new(String::from("true"), true));
+        test_cases.push(BoolTestStruct::new(String::from("false"), false));
+
+        for tc in test_cases {
+            let bool_obj = test_eval_program(tc.bool_str.as_str());
+            assert_eq!(bool_obj.obj_type(), ObjectType::Boolean);
+            assert_eq!(bool_obj.to_string(), tc.bool_str);
         }
     }
 }

@@ -163,7 +163,7 @@ impl Lexer {
             }
 
             // Identifiers and keywords
-            if input.chars().nth(index).unwrap().is_alphabetic() {
+            if index < size && input.chars().nth(index).unwrap().is_alphabetic() {
                 while index < size && (input.chars().nth(index).unwrap().is_alphanumeric() ||
                     input.chars().nth(index).unwrap() == '_') {
                     index += 1;
@@ -185,7 +185,7 @@ impl Lexer {
             }
 
             // Numbers
-            if input.chars().nth(index).unwrap().is_ascii_digit() {
+            if index < size && input.chars().nth(index).unwrap().is_ascii_digit() {
                 while index < size && (input.chars().nth(index).unwrap().is_ascii_digit()) {
                     index += 1;
                 }
