@@ -30,8 +30,19 @@ pub trait Statement: Node + std::fmt::Display {}
 
 pub trait Expression: Node + std::fmt::Display {}
 
+#[derive(Debug)]
 pub struct Program {
     pub(crate) statements: Vec<Box<dyn Statement>>
+}
+
+impl Node for Program {
+    fn ast_node_type(&self) -> AstNode {
+        AstNode::
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 // Statements
