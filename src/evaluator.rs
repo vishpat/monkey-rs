@@ -1,29 +1,18 @@
 use std::any::Any;
 use crate::object::{Object, ObjectType, Error};
-use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement};
+use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement, Expression};
 use std::borrow::Borrow;
 use std::ops::Deref;
 
 pub fn eval(node: &dyn Node) -> Box<dyn Object> {
+
+    println!("Evaluating {:?}", node);
+
     match node.ast_node_type() {
         AstNode::ExpressionStatement => {
             match node.as_any().downcast_ref::<ExpressionStatement>() {
-                Some(es) => eval(es),
-                _ => panic!("Eval: Invalid integer expression {:?}", node)
-            }
-        }
-
-        AstNode::IntegerExpression => {
-            match node.as_any().downcast_ref::<Integer>() {
-                Some(i) => Integer::new(i.value),
-                _ => panic!("Eval: Invalid integer expression {:?}", node)
-            }
-        }
-
-        AstNode::BooleanExpression => {
-            match node.as_any().downcast_ref::<Boolean>() {
-                Some(b) => Boolean::new(b.value),
-                _ => panic!("Eval: Invalid boolean expression {:?}", node)
+                Some(es) => eval_expression(es.expr.as_ref()),
+                _ => panic!("Eval: Invalid expression statement {:?}", node)
             }
         }
 
@@ -36,6 +25,21 @@ pub fn eval(node: &dyn Node) -> Box<dyn Object> {
 
         _ => panic!("Unrecognized AST node {:?}", node)
     }
+}
+
+pub fn eval_expression(expr: &dyn Expression) -> Box<dyn Object> {
+    let mut result: Box<dyn Object> = Error::new(String::from("Expression"));
+
+    match expr.ast_node_type() {
+        AstNode::IntegerExpression => {
+            result = match expr.as_any().downcast_ref::<Integer>() {
+                Some(i) => Integer::new(i.value),
+                _ => panic!("Eval: Invalid integer expression {:?}", expr)
+            }
+        },
+        _ => unimplemented!("Unable to evaluate expression {}", expr)
+    }
+    result
 }
 
 pub fn eval_program(program: &Program) -> Box<dyn Object> {
