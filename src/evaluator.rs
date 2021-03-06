@@ -1,8 +1,9 @@
 use std::any::Any;
 use crate::object::{Object, ObjectType, Error};
-use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement, Expression};
+use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement, Expression, InfixExpression, PrefixExpression};
 use std::borrow::Borrow;
 use std::ops::Deref;
+use crate::lexer::Token;
 
 pub fn eval(node: &dyn Node) -> Box<dyn Object> {
 
@@ -27,6 +28,29 @@ pub fn eval(node: &dyn Node) -> Box<dyn Object> {
     }
 }
 
+pub fn eval_prefix_expression(op: &Token, expr: &dyn Object) -> Box<dyn Object> {
+    match op {
+        Token::Bang => {
+            match expr.as_any().downcast_ref::<Boolean>() {
+                Some(b) => {
+                    Boolean::new(!b.value)
+                },
+                _ => panic!("Invalid prefix expression {}, expected bool", expr)
+            }
+        },
+        Token::Minus => {
+            match expr.as_any().downcast_ref::<Integer>() {
+                Some(i) => {
+                    Integer::new(i.value*-1)
+                },
+                _ => panic!("Invalid prefix expression {}, expected int", expr)
+            }
+        },
+        _ => panic!("Invalid prefix operator {}", op)
+    }
+}
+
+
 pub fn eval_expression(expr: &dyn Expression) -> Box<dyn Object> {
     let mut result: Box<dyn Object> = Error::new(String::from("Expression"));
 
@@ -45,6 +69,17 @@ pub fn eval_expression(expr: &dyn Expression) -> Box<dyn Object> {
                 _ => panic!("Eval: Invalid boolean expression {:?}", expr)
             }
         },
+
+        AstNode::PrefixExpression => {
+            result = match expr.as_any().downcast_ref::<PrefixExpression>() {
+                Some(prefix_expr) => {
+                    let right = eval(prefix_expr.expr.node());
+                    eval_prefix_expression(prefix_expr.op.as_ref(), right.as_ref())
+                },
+                _ => panic!("Eval: Invalid boolean expression {:?}", expr)
+            }
+        },
+
         _ => unimplemented!("Unable to evaluate expression {}", expr)
     }
     result

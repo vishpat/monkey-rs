@@ -28,9 +28,13 @@ pub trait Node: std::fmt::Debug {
     fn as_any(&self) -> &dyn Any;
 }
 
-pub trait Statement: Node + std::fmt::Display {}
+pub trait Statement: Node + std::fmt::Display {
+    fn node(&self) -> &dyn Node;
+}
 
-pub trait Expression: Node + std::fmt::Display {}
+pub trait Expression: Node + std::fmt::Display {
+    fn node(&self) -> &dyn Node;
+}
 
 #[derive(Debug)]
 pub struct Program {
@@ -68,7 +72,11 @@ impl std::fmt::Display for LetStatement {
     }
 }
 
-impl Statement for LetStatement {}
+impl Statement for LetStatement {
+    fn node(&self) -> &dyn Node {
+        self
+    }
+}
 
 impl Node for LetStatement {
     fn ast_node_type(&self) -> AstNode {
@@ -98,7 +106,11 @@ impl std::fmt::Display for ReturnStatement {
     }
 }
 
-impl Statement for ReturnStatement {}
+impl Statement for ReturnStatement {
+    fn node(&self) -> &dyn Node {
+       self
+    }
+}
 
 impl Node for ReturnStatement {
     fn ast_node_type(&self) -> AstNode {
@@ -128,7 +140,11 @@ impl std::fmt::Display for ExpressionStatement {
     }
 }
 
-impl Statement for ExpressionStatement {}
+impl Statement for ExpressionStatement {
+    fn node(&self) -> &dyn Node {
+        self
+    }
+}
 
 impl Node for ExpressionStatement {
     fn ast_node_type(&self) -> AstNode {
@@ -162,7 +178,11 @@ impl std::fmt::Display for BlockStatement {
     }
 }
 
-impl Statement for BlockStatement {}
+impl Statement for BlockStatement {
+    fn node(&self) -> &dyn Node {
+        self
+    }
+}
 
 impl Node for BlockStatement {
     fn ast_node_type(&self) -> AstNode {
@@ -194,7 +214,11 @@ impl std::fmt::Display for Identifier {
 }
 
 
-impl Expression for Identifier {}
+impl Expression for Identifier {
+    fn node(&self) -> &dyn Node {
+        self
+    }
+}
 
 impl Node for Identifier {
     fn ast_node_type(&self) -> AstNode {
@@ -224,7 +248,11 @@ impl std::fmt::Display for Boolean {
     }
 }
 
-impl Expression for Boolean {}
+impl Expression for Boolean {
+    fn node(&self) -> &dyn Node {
+        self
+    }
+}
 
 impl Node for Boolean {
     fn ast_node_type(&self) -> AstNode {
@@ -254,7 +282,11 @@ impl std::fmt::Display for Integer {
     }
 }
 
-impl Expression for Integer {}
+impl Expression for Integer {
+    fn node(&self) -> &dyn Node {
+        self
+    }
+}
 
 impl Node for Integer {
     fn ast_node_type(&self) -> AstNode {
@@ -286,7 +318,11 @@ impl std::fmt::Display for PrefixExpression {
     }
 }
 
-impl Expression for PrefixExpression {}
+impl Expression for PrefixExpression {
+    fn node(&self) -> &dyn Node {
+        self
+    }
+}
 
 impl Node for PrefixExpression {
     fn ast_node_type(&self) -> AstNode {
@@ -319,7 +355,11 @@ impl std::fmt::Display for InfixExpression {
     }
 }
 
-impl Expression for InfixExpression {}
+impl Expression for InfixExpression {
+    fn node(&self) -> &dyn Node {
+        self
+    }
+}
 
 impl Node for InfixExpression {
     fn ast_node_type(&self) -> AstNode {
@@ -357,7 +397,11 @@ impl std::fmt::Display for IfExpression {
     }
 }
 
-impl Expression for IfExpression {}
+impl Expression for IfExpression {
+    fn node(&self) -> &dyn Node {
+        self
+    }
+}
 
 impl Node for IfExpression {
     fn ast_node_type(&self) -> AstNode {
@@ -389,7 +433,11 @@ impl std::fmt::Display for FunctionLiteral {
     }
 }
 
-impl Expression for FunctionLiteral {}
+impl Expression for FunctionLiteral {
+    fn node(&self) -> &dyn Node {
+        self
+    }
+}
 
 impl Node for FunctionLiteral {
     fn ast_node_type(&self) -> AstNode {
@@ -424,7 +472,11 @@ impl std::fmt::Display for CallExpression {
     }
 }
 
-impl Expression for CallExpression {}
+impl Expression for CallExpression {
+    fn node(&self) -> &dyn Node {
+        self
+    }
+}
 
 impl Node for CallExpression {
     fn ast_node_type(&self) -> AstNode {
