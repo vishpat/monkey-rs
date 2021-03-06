@@ -2,6 +2,8 @@ mod lexer;
 mod ast;
 mod parser;
 mod evaluator;
+mod object;
+
 use linefeed::{Interface, ReadResult};
 use crate::lexer::Lexer;
 

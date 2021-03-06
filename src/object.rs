@@ -37,3 +37,28 @@ impl Object for Boolean {
 
     fn as_any(&self) -> &dyn Any { self }
 }
+
+#[derive(Debug)]
+pub struct Error {
+    msg: String
+}
+
+impl Error {
+    pub fn new(msg: String) -> Box<Error> {
+        Box::new(Error{msg})
+    }
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(fmt, "{}", self.msg)
+    }
+}
+
+impl Object for Error {
+    fn obj_type(&self) -> ObjectType {
+        ObjectType::Error
+    }
+
+    fn as_any(&self) -> &dyn Any { self }
+}

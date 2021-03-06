@@ -17,6 +17,8 @@ pub enum AstNode {
     IfExpression,
     FunctionLiteralExpression,
     CallExpression,
+
+    Program,
 }
 
 pub trait Node: std::fmt::Debug {
@@ -37,7 +39,7 @@ pub struct Program {
 
 impl Node for Program {
     fn ast_node_type(&self) -> AstNode {
-        AstNode::
+        AstNode::Program
     }
 
     fn as_any(&self) -> &dyn Any {
