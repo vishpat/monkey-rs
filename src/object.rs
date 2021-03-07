@@ -5,6 +5,7 @@ use crate::ast;
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd)]
 pub enum ObjectType {
     Error,
+    Nil,
     Integer,
     Boolean,
     Identifier,
@@ -58,6 +59,30 @@ impl std::fmt::Display for Error {
 impl Object for Error {
     fn obj_type(&self) -> ObjectType {
         ObjectType::Error
+    }
+
+    fn as_any(&self) -> &dyn Any { self }
+}
+
+#[derive(Debug)]
+pub struct Nil {
+}
+
+impl Nil {
+    pub fn new() -> Box<Nil> {
+        Box::new(Nil{})
+    }
+}
+
+impl std::fmt::Display for Nil {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Nil> {
+        write!(fmt, "Nil")
+    }
+}
+
+impl Object for Nil {
+    fn obj_type(&self) -> ObjectType {
+        ObjectType::Nil
     }
 
     fn as_any(&self) -> &dyn Any { self }

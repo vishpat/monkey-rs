@@ -1,7 +1,6 @@
 use std::any::Any;
-use crate::object::{Object, ObjectType, Error};
-use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement,
-                 Expression, InfixExpression, PrefixExpression, Statement};
+use crate::object::{Object, ObjectType, Error, Nil};
+use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement, Expression, InfixExpression, PrefixExpression, Statement, IfExpression};
 use std::borrow::Borrow;
 use std::ops::Deref;
 use crate::lexer::Token;
@@ -15,6 +14,8 @@ pub fn eval(node: &dyn Node) -> Box<dyn Object> {
         AstNode::ExpressionStatement => eval_expr_stmt(node),
         AstNode::PrefixExpression => eval_prefix_expression(node),
         AstNode::InfixExpression => eval_infix_expression(node),
+        AstNode::IfExpression => eval_infix_expression(node),
+        AstNode::BlockStatement => eval_block_statement(node),
         AstNode::Program => eval_program(node),
         _ => panic!("Unrecognized AST node {:?}", node)
     }
@@ -109,6 +110,25 @@ pub fn eval_infix_expression(node: &dyn Node) -> Box<dyn Object> {
             }
         },
         _ => panic!("Invalid infix operator {}", op)
+    }
+}
+
+pub fn eval_if_expression(node: &dyn Node) -> Box<dyn Object> {
+
+    let if_expr: &IfExpression = match node.as_any().downcast_ref::<IfExpression>() {
+        Some(if_expr) => if_expr,
+        _ => panic!("Eval: Invalid boolean expression {:?}", node)
+    };
+
+    let cond= eval(&if_expr.cond).as_any().downcast_ref::<Boolean>().unwrap().value;
+    if cond {
+        eval(if_expr.true_block.as_ref())
+    } else {
+        if if_expr.false_block.is_some() {
+            eval(if_expr.false_block.unwrap().as_ref())
+        } else {
+            Nil::new()
+        }
     }
 }
 
