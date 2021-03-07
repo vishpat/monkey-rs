@@ -1,6 +1,6 @@
 use std::any::Any;
 use crate::object::{Object, ObjectType, Error, Nil};
-use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement, Expression, InfixExpression, PrefixExpression, Statement, IfExpression};
+use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement, Expression, InfixExpression, PrefixExpression, Statement, IfExpression, BlockStatement};
 use std::borrow::Borrow;
 use std::ops::Deref;
 use crate::lexer::Token;
@@ -14,7 +14,7 @@ pub fn eval(node: &dyn Node) -> Box<dyn Object> {
         AstNode::ExpressionStatement => eval_expr_stmt(node),
         AstNode::PrefixExpression => eval_prefix_expression(node),
         AstNode::InfixExpression => eval_infix_expression(node),
-        AstNode::IfExpression => eval_infix_expression(node),
+        AstNode::IfExpression => eval_if_expression(node),
         AstNode::BlockStatement => eval_block_statement(node),
         AstNode::Program => eval_program(node),
         _ => panic!("Unrecognized AST node {:?}", node)
@@ -120,28 +120,51 @@ pub fn eval_if_expression(node: &dyn Node) -> Box<dyn Object> {
         _ => panic!("Eval: Invalid boolean expression {:?}", node)
     };
 
-    let cond= eval(&if_expr.cond).as_any().downcast_ref::<Boolean>().unwrap().value;
+    let cond= (eval(if_expr.cond.node())).as_any().downcast_ref::<Boolean>().unwrap().value;
     if cond {
-        eval(if_expr.true_block.as_ref())
+        eval(if_expr.true_block.as_ref().node())
     } else {
         if if_expr.false_block.is_some() {
-            eval(if_expr.false_block.unwrap().as_ref())
+            eval(if_expr.false_block.as_ref().unwrap().node())
         } else {
             Nil::new()
         }
     }
 }
 
-pub fn eval_program(node: &dyn Node) -> Box<dyn Object> {
-    let program = match node.as_any().downcast_ref::<Program>() {
+pub fn eval_block_statement(node: &dyn Node) -> Box<dyn Object> {
+    let block = match node.as_any().downcast_ref::<BlockStatement>() {
         Some(p) => p,
+        _ => panic!("Eval: Invalid Code Block {:?}", node)
+    };
+
+    let mut result: Box<dyn Object> = Error::new(String::from("Block Start"));
+    for stmt in block.block.iter() {
+        result = match stmt.ast_node_type() {
+            AstNode::ExpressionStatement | AstNode::BlockStatement |
+            AstNode::LetStatement | AstNode::ReturnStatement => eval(stmt.node()),
+            _ => unimplemented!("Unimplemented eval for {:?}", stmt)
+        };
+
+        if stmt.ast_node_type() == AstNode::ReturnStatement {
+            break;
+        }
+
+    }
+    result
+}
+
+pub fn eval_program(node: &dyn Node) -> Box<dyn Object> {
+    let program = match node.ast_node_type() {
+        AstNode::Program => node.as_any().downcast_ref::<Program>().unwrap(),
         _ => panic!("Eval: Invalid Program {:?}", node)
     };
 
     let mut result: Box<dyn Object> = Error::new(String::from("Program start"));
     for stmt in &program.statements {
         result = match stmt.ast_node_type() {
-            AstNode::ExpressionStatement => eval(stmt.node()),
+            AstNode::ExpressionStatement | AstNode::ReturnStatement |
+            AstNode::BlockStatement | AstNode::LetStatement => eval(stmt.node()),
             _ => unimplemented!("Unimplemented eval for {:?}", stmt)
         }
     }
@@ -344,4 +367,39 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_eval_if_expression() {
+        struct IfTestStruct {
+            if_str: String,
+            if_val: i64,
+        }
+
+        impl IfTestStruct {
+            fn new(if_str: String, if_val: i64) -> IfTestStruct {
+                IfTestStruct { if_str, if_val }
+            }
+        }
+
+        let mut test_cases: Vec<IfTestStruct> = vec![];
+        test_cases.push(IfTestStruct::new(String::from("if (1 > 2) {1} else {2} "), 2));
+        test_cases.push(IfTestStruct::new(String::from("if (3 > 2) {-1} else {2} "), -1));
+        test_cases.push(IfTestStruct::new(String::from("if (3 > 2) {-1}"), -1));
+        test_cases.push(IfTestStruct::new(String::from("if (3 > 2) {-1 + 2}"), 1));
+        test_cases.push(IfTestStruct::new(String::from("if (1 > 2) {x} else {2*3 + 1} "), 7));
+
+        for tc in test_cases {
+            let if_obj = test_eval_program(tc.if_str.as_str());
+
+            assert_eq!(if_obj.obj_type(), ObjectType::Integer);
+            match if_obj.as_any().downcast_ref::<Integer>() {
+                Some(i) => {
+                    assert_eq!(i.value, tc.if_val);
+                }
+                _ => panic!("Invalid type expected Integet")
+            }
+        }
+
+        let if_obj = test_eval_program("if (2 > 3) {1}");
+        assert_eq!(if_obj.obj_type(), ObjectType::Nil);
+    }
 }

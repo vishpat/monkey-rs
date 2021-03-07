@@ -75,7 +75,7 @@ impl Nil {
 }
 
 impl std::fmt::Display for Nil {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Nil> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(fmt, "Nil")
     }
 }
