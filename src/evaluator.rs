@@ -1,6 +1,6 @@
 use std::any::Any;
 use crate::object::{Object, ObjectType, Error, Nil};
-use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement, Expression, InfixExpression, PrefixExpression, Statement, IfExpression, BlockStatement};
+use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement, Expression, InfixExpression, PrefixExpression, Statement, IfExpression, BlockStatement, ReturnStatement};
 use std::borrow::Borrow;
 use std::ops::Deref;
 use crate::lexer::Token;
@@ -15,6 +15,7 @@ pub fn eval(node: &dyn Node) -> Box<dyn Object> {
         AstNode::PrefixExpression => eval_prefix_expression(node),
         AstNode::InfixExpression => eval_infix_expression(node),
         AstNode::IfExpression => eval_if_expression(node),
+        AstNode::ReturnStatement => eval_return_statement(node),
         AstNode::BlockStatement => eval_block_statement(node),
         AstNode::Program => eval_program(node),
         _ => panic!("Unrecognized AST node {:?}", node)
@@ -129,6 +130,13 @@ pub fn eval_if_expression(node: &dyn Node) -> Box<dyn Object> {
         } else {
             Nil::new()
         }
+    }
+}
+
+pub fn eval_return_statement(node: &dyn Node) -> Box<dyn Object> {
+    match node.as_any().downcast_ref::<ReturnStatement>(){
+        Some(ret) => eval(ret.expr.node()),
+        _ => panic!("Return statement expected")
     }
 }
 
@@ -368,6 +376,37 @@ mod tests {
     }
 
     #[test]
+    fn test_eval_return_statement() {
+        struct ReturnTestStruct {
+            return_str: String,
+            return_val: i64,
+        }
+
+        impl ReturnTestStruct {
+            fn new(return_str: String, return_val: i64) -> ReturnTestStruct {
+                ReturnTestStruct { return_str, return_val }
+            }
+        }
+
+        let mut test_cases: Vec<ReturnTestStruct> = vec![];
+        test_cases.push(ReturnTestStruct::new(String::from("return 2"), 2));
+        test_cases.push(ReturnTestStruct::new(String::from("return (-2*3)"), -6));
+        test_cases.push(ReturnTestStruct::new(String::from("return 2 + 2"), 4));
+
+        for tc in test_cases {
+            let return_obj = test_eval_program(tc.return_str.as_str());
+
+            assert_eq!(return_obj.obj_type(), ObjectType::Integer);
+            match return_obj.as_any().downcast_ref::<Integer>() {
+                Some(i) => {
+                    assert_eq!(i.value, tc.return_val);
+                }
+                _ => panic!("Invalid type expected Integet")
+            }
+        }
+    }
+
+    #[test]
     fn test_eval_if_expression() {
         struct IfTestStruct {
             if_str: String,
@@ -385,7 +424,7 @@ mod tests {
         test_cases.push(IfTestStruct::new(String::from("if (3 > 2) {-1} else {2} "), -1));
         test_cases.push(IfTestStruct::new(String::from("if (3 > 2) {-1}"), -1));
         test_cases.push(IfTestStruct::new(String::from("if (3 > 2) {-1 + 2}"), 1));
-        test_cases.push(IfTestStruct::new(String::from("if (1 > 2) {x} else {2*3 + 1} "), 7));
+        test_cases.push(IfTestStruct::new(String::from("if (1 > 2) {x} else {return 2*3 + 1; 10;}"), 7));
 
         for tc in test_cases {
             let if_obj = test_eval_program(tc.if_str.as_str());
