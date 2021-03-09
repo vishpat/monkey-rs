@@ -20,7 +20,7 @@ pub fn eval(node: &dyn Node) -> Box<dyn Object> {
         AstNode::ReturnStatement => eval_return_statement(node),
         AstNode::BlockStatement => eval_block_statement(node),
         AstNode::Program => eval_program(node),
-        _ => panic!("Unrecognized AST node {:?}", node)
+        _ => Error::new(format!("Unrecognized AST node {:?}", node))
     }
 }
 
@@ -28,7 +28,7 @@ pub fn eval_bool_expr(node: &dyn Node) -> Box<dyn Object> {
     match node.ast_node_type() {
         AstNode::BooleanExpression =>
             Boolean::new(node.as_any().downcast_ref::<Boolean>().unwrap().value),
-        _ => panic!("Eval: Invalid boolean expression {:?}", node)
+        _ => Error::new(format!("Invalid boolean expression {:?}", node))
     }
 }
 
@@ -36,7 +36,7 @@ pub fn eval_int_expr(node: &dyn Node) -> Box<dyn Object> {
     match node.ast_node_type() {
         AstNode::IntegerExpression =>
             Integer::new(node.as_any().downcast_ref::<Integer>().unwrap().value),
-        _ => panic!("Eval: Invalid integer expression {:?}", node)
+        _ => Error::new(format!("Eval: Invalid integer expression {:?}", node))
     }
 }
 
@@ -44,7 +44,7 @@ pub fn eval_expr_stmt(node: &dyn Node) -> Box<dyn Object> {
     match node.ast_node_type() {
         AstNode::ExpressionStatement =>
             eval(node.as_any().downcast_ref::<ExpressionStatement>().unwrap().expr.node()),
-        _ => panic!("Eval: Invalid boolean expression {:?}", node)
+        _ => Error::new(format!("Eval: Invalid expression {:?}", node))
     }
 }
 
@@ -52,7 +52,7 @@ pub fn eval_prefix_expression(node: &dyn Node) -> Box<dyn Object> {
 
     let prefix_expr: &PrefixExpression = match node.ast_node_type() {
         AstNode::PrefixExpression => node.as_any().downcast_ref::<PrefixExpression>().unwrap(),
-        _ => panic!("Eval: Invalid boolean expression {:?}", node)
+        _ => return Error::new(format!("Eval: Invalid boolean expression {:?}", node))
     };
 
     let op = prefix_expr.op.as_ref();
@@ -64,7 +64,7 @@ pub fn eval_prefix_expression(node: &dyn Node) -> Box<dyn Object> {
             match expr_evaluated.obj_type() {
                 ObjectType::Boolean =>
                     Boolean::new(!expr_evaluated.as_any().downcast_ref::<Boolean>().unwrap().value),
-                _ => panic!("Invalid prefix expression type {:?}, expected bool", expr.ast_node_type())
+                _ => Error::new(format!("Invalid prefix expression type {:?}, expected bool", expr.ast_node_type()))
             }
         }
         Token::Minus => {
@@ -72,17 +72,17 @@ pub fn eval_prefix_expression(node: &dyn Node) -> Box<dyn Object> {
                 ObjectType::Integer => {
                     Integer::new(expr_evaluated.as_any().downcast_ref::<Integer>().unwrap().value*-1)
                 }
-                _ => panic!("Invalid prefix expression type {:?}, expected int", expr.ast_node_type())
+                _ => Error::new(format!("Invalid prefix expression type {:?}, expected int", expr.ast_node_type()))
             }
         }
-        _ => panic!("Invalid prefix operator {}", op)
+        _ => Error::new(format!("Invalid prefix operator {}", op))
     }
 }
 
 pub fn eval_infix_expression(node: &dyn Node) -> Box<dyn Object> {
     let infix_expr: &InfixExpression = match node.as_any().downcast_ref::<InfixExpression>() {
         Some(infix_expr) => infix_expr,
-        _ => panic!("Eval: Invalid boolean expression {:?}", node)
+        _ => return Error::new(format!("Eval: Invalid boolean expression {:?}", node))
     };
 
     let op = infix_expr.op.as_ref();
@@ -94,11 +94,11 @@ pub fn eval_infix_expression(node: &dyn Node) -> Box<dyn Object> {
         Token::Lt | Token::Gt | Token::Eq | Token::NotEq => {
             let left_val = match left.obj_type() {
                 ObjectType::Integer => left.as_any().downcast_ref::<Integer>().unwrap().value ,
-                _ => panic!("Invalid left val in {:?}, expected Integer", left.obj_type())
+                _ => return Error::new(format!("Invalid left val in expected Integer"))
             };
             let right_val = match right.obj_type() {
                 ObjectType::Integer => right.as_any().downcast_ref::<Integer>().unwrap().value,
-                _ => panic!("Invalid right val in {:?}, expected Integer", right.obj_type())
+                _ => return Error::new(format!("Invalid right val in expected Integer"))
             };
             match op {
                 Token::Plus => Integer::new(left_val + right_val),
@@ -109,10 +109,10 @@ pub fn eval_infix_expression(node: &dyn Node) -> Box<dyn Object> {
                 Token::Gt => Boolean::new(left_val > right_val),
                 Token::Eq => Boolean::new(left_val == right_val),
                 Token::NotEq => Boolean::new(left_val != right_val),
-                _ => panic!("Invalid op {}", op)
+                _ => Error::new(format!("Invalid op {}", op))
             }
         },
-        _ => panic!("Invalid infix operator {}", op)
+        _ => Error::new(format!("Invalid infix operator {}", op))
     }
 }
 
@@ -120,7 +120,7 @@ pub fn eval_if_expression(node: &dyn Node) -> Box<dyn Object> {
 
     let if_expr: &IfExpression = match node.as_any().downcast_ref::<IfExpression>() {
         Some(if_expr) => if_expr,
-        _ => panic!("Eval: Invalid boolean expression {:?}", node)
+        _ => return Error::new(format!("Eval: Invalid boolean expression {:?}", node))
     };
 
     let cond= (eval(if_expr.cond.node())).as_any().downcast_ref::<Boolean>().unwrap().value;
@@ -138,14 +138,14 @@ pub fn eval_if_expression(node: &dyn Node) -> Box<dyn Object> {
 pub fn eval_return_statement(node: &dyn Node) -> Box<dyn Object> {
     match node.as_any().downcast_ref::<ReturnStatement>(){
         Some(ret) => eval(ret.expr.node()),
-        _ => panic!("Return statement expected")
+        _ => Error::new(format!("Return statement expected"))
     }
 }
 
 pub fn eval_block_statement(node: &dyn Node) -> Box<dyn Object> {
     let block = match node.as_any().downcast_ref::<BlockStatement>() {
         Some(p) => p,
-        _ => panic!("Eval: Invalid Code Block {:?}", node)
+        _ => return Error::new(format!("Eval: Invalid Code Block {:?}", node))
     };
 
     let mut result: Box<dyn Object> = Error::new(String::from("Block Start"));
@@ -167,7 +167,7 @@ pub fn eval_block_statement(node: &dyn Node) -> Box<dyn Object> {
 pub fn eval_program(node: &dyn Node) -> Box<dyn Object> {
     let program = match node.ast_node_type() {
         AstNode::Program => node.as_any().downcast_ref::<Program>().unwrap(),
-        _ => panic!("Eval: Invalid Program {:?}", node)
+        _ => return Error::new(format!("Eval: Invalid Program {:?}", node))
     };
 
     let mut result: Box<dyn Object> = Error::new(String::from("Program start"));
