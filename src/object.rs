@@ -2,6 +2,7 @@ use std::any::Any;
 use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program};
 use crate::ast;
 use std::collections::HashMap;
+use crate::lexer::Token::Int;
 
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd)]
 pub enum ObjectType {
@@ -103,6 +104,17 @@ impl Environment {
     }
 
     pub fn get(&self, k:String) -> Option<Box<dyn Object>> {
-        self.get(k)
+        let val = self.data.get(&k);
+        if val.is_some() {
+            let val2 = val.unwrap();
+            let val3: Option<Box<dyn Object>> = match val2.obj_type() {
+                ObjectType::Integer => Some(Integer::new(val2.as_any().downcast_ref::<Integer>().unwrap().value)),
+                ObjectType::Boolean => Some(Boolean::new(val2.as_any().downcast_ref::<Boolean>().unwrap().value)),
+                _ => None
+            };
+            return val3;
+        }
+
+        None
     }
 }
