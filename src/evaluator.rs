@@ -1,25 +1,25 @@
 use std::any::Any;
-use crate::object::{Object, ObjectType, Error, Nil};
-use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement,
-                 Expression, InfixExpression, PrefixExpression, Statement, IfExpression,
-                 BlockStatement, ReturnStatement};
+use crate::object::{Object, ObjectType, Error, Nil, Environment};
+use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement, Expression, InfixExpression, PrefixExpression, Statement, IfExpression, BlockStatement, ReturnStatement, LetStatement};
 use std::borrow::Borrow;
 use std::ops::Deref;
 use crate::lexer::Token;
 
-pub fn eval(node: &dyn Node) -> Box<dyn Object> {
+pub fn eval(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
     //println!("Evaluating {:?}", node);
 
     match node.ast_node_type() {
         AstNode::IntegerExpression => eval_int_expr(node),
         AstNode::BooleanExpression => eval_bool_expr(node),
-        AstNode::ExpressionStatement => eval_expr_stmt(node),
-        AstNode::PrefixExpression => eval_prefix_expression(node),
-        AstNode::InfixExpression => eval_infix_expression(node),
-        AstNode::IfExpression => eval_if_expression(node),
-        AstNode::ReturnStatement => eval_return_statement(node),
-        AstNode::BlockStatement => eval_block_statement(node),
-        AstNode::Program => eval_program(node),
+        AstNode::IdentifierExpression => eval_identifier(node, environment),
+        AstNode::ExpressionStatement => eval_expr_stmt(node, environment),
+        AstNode::PrefixExpression => eval_prefix_expression(node, environment),
+        AstNode::InfixExpression => eval_infix_expression(node, environment),
+        AstNode::IfExpression => eval_if_expression(node, environment),
+        AstNode::ReturnStatement => eval_return_statement(node, environment),
+        AstNode::LetStatement => eval_let_statement(node, environment),
+        AstNode::BlockStatement => eval_block_statement(node, environment),
+        AstNode::Program => eval_program(node, environment),
         _ => Error::new(format!("Unrecognized AST node {:?}", node))
     }
 }
@@ -40,15 +40,40 @@ pub fn eval_int_expr(node: &dyn Node) -> Box<dyn Object> {
     }
 }
 
-pub fn eval_expr_stmt(node: &dyn Node) -> Box<dyn Object> {
+pub fn eval_identifier(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
+    match node.ast_node_type() {
+        AstNode::IdentifierExpression => {
+            let identifer = node.as_any().downcast_ref::<Identifier>().unwrap();
+
+            environment.get(identifer.value.to_string()).unwrap_or(
+                Error::new(format!("{} identifier not found", identifer.value)))
+        },
+        _ => Error::new(format!("Eval: Invalid integer expression {:?}", node))
+    }
+}
+
+pub fn eval_expr_stmt(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
     match node.ast_node_type() {
         AstNode::ExpressionStatement =>
-            eval(node.as_any().downcast_ref::<ExpressionStatement>().unwrap().expr.node()),
+            eval(node.as_any().downcast_ref::<ExpressionStatement>().unwrap().expr.node(),
+                 environment),
         _ => Error::new(format!("Eval: Invalid expression {:?}", node))
     }
 }
 
-pub fn eval_prefix_expression(node: &dyn Node) -> Box<dyn Object> {
+pub fn eval_let_statement(node: &dyn Node, environment: &mut Box<Environment> ) -> Box<dyn Object> {
+    match node.ast_node_type() {
+        AstNode::LetStatement=> {
+            let let_stmt=node.as_any().downcast_ref::<LetStatement>().unwrap();
+            let val = eval(let_stmt.expr.node(), environment);
+            environment.put(let_stmt.id.value.to_string(), val);
+            Nil::new()
+        },
+        _ => Error::new(format!("Eval: Invalid expression {:?}", node))
+    }
+}
+
+pub fn eval_prefix_expression(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
 
     let prefix_expr: &PrefixExpression = match node.ast_node_type() {
         AstNode::PrefixExpression => node.as_any().downcast_ref::<PrefixExpression>().unwrap(),
@@ -57,7 +82,7 @@ pub fn eval_prefix_expression(node: &dyn Node) -> Box<dyn Object> {
 
     let op = prefix_expr.op.as_ref();
     let mut expr = prefix_expr.expr.as_ref();
-    let expr_evaluated = eval(expr.node());
+    let expr_evaluated = eval(expr.node(), environment);
 
     match op {
         Token::Bang => {
@@ -79,15 +104,15 @@ pub fn eval_prefix_expression(node: &dyn Node) -> Box<dyn Object> {
     }
 }
 
-pub fn eval_infix_expression(node: &dyn Node) -> Box<dyn Object> {
+pub fn eval_infix_expression(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
     let infix_expr: &InfixExpression = match node.as_any().downcast_ref::<InfixExpression>() {
         Some(infix_expr) => infix_expr,
         _ => return Error::new(format!("Eval: Invalid boolean expression {:?}", node))
     };
 
     let op = infix_expr.op.as_ref();
-    let left = eval(infix_expr.left.node());
-    let right = eval(infix_expr.right.node());
+    let left = eval(infix_expr.left.node(), environment);
+    let right = eval(infix_expr.right.node(), environment);
 
     match op {
         Token::Plus | Token::Minus | Token::Asterik | Token::Slash |
@@ -116,33 +141,33 @@ pub fn eval_infix_expression(node: &dyn Node) -> Box<dyn Object> {
     }
 }
 
-pub fn eval_if_expression(node: &dyn Node) -> Box<dyn Object> {
+pub fn eval_if_expression(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
 
     let if_expr: &IfExpression = match node.as_any().downcast_ref::<IfExpression>() {
         Some(if_expr) => if_expr,
         _ => return Error::new(format!("Eval: Invalid boolean expression {:?}", node))
     };
 
-    let cond= (eval(if_expr.cond.node())).as_any().downcast_ref::<Boolean>().unwrap().value;
+    let cond= (eval(if_expr.cond.node(), environment)).as_any().downcast_ref::<Boolean>().unwrap().value;
     if cond {
-        eval(if_expr.true_block.as_ref().node())
+        eval(if_expr.true_block.as_ref().node(), environment)
     } else {
         if if_expr.false_block.is_some() {
-            eval(if_expr.false_block.as_ref().unwrap().node())
+            eval(if_expr.false_block.as_ref().unwrap().node(), environment)
         } else {
             Nil::new()
         }
     }
 }
 
-pub fn eval_return_statement(node: &dyn Node) -> Box<dyn Object> {
+pub fn eval_return_statement(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
     match node.as_any().downcast_ref::<ReturnStatement>(){
-        Some(ret) => eval(ret.expr.node()),
+        Some(ret) => eval(ret.expr.node(), environment),
         _ => Error::new(format!("Return statement expected"))
     }
 }
 
-pub fn eval_block_statement(node: &dyn Node) -> Box<dyn Object> {
+pub fn eval_block_statement(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
     let block = match node.as_any().downcast_ref::<BlockStatement>() {
         Some(p) => p,
         _ => return Error::new(format!("Eval: Invalid Code Block {:?}", node))
@@ -152,7 +177,7 @@ pub fn eval_block_statement(node: &dyn Node) -> Box<dyn Object> {
     for stmt in block.block.iter() {
         result = match stmt.ast_node_type() {
             AstNode::ExpressionStatement | AstNode::BlockStatement |
-            AstNode::LetStatement | AstNode::ReturnStatement => eval(stmt.node()),
+            AstNode::LetStatement | AstNode::ReturnStatement => eval(stmt.node(), environment),
             _ => unimplemented!("Unimplemented eval for {:?}", stmt)
         };
 
@@ -164,7 +189,7 @@ pub fn eval_block_statement(node: &dyn Node) -> Box<dyn Object> {
     result
 }
 
-pub fn eval_program(node: &dyn Node) -> Box<dyn Object> {
+pub fn eval_program(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
     let program = match node.ast_node_type() {
         AstNode::Program => node.as_any().downcast_ref::<Program>().unwrap(),
         _ => return Error::new(format!("Eval: Invalid Program {:?}", node))
@@ -174,7 +199,7 @@ pub fn eval_program(node: &dyn Node) -> Box<dyn Object> {
     for stmt in &program.statements {
         result = match stmt.ast_node_type() {
             AstNode::ExpressionStatement | AstNode::ReturnStatement |
-            AstNode::BlockStatement | AstNode::LetStatement => eval(stmt.node()),
+            AstNode::BlockStatement | AstNode::LetStatement => eval(stmt.node(), environment),
             _ => unimplemented!("Unimplemented eval for {:?}", stmt)
         }
     }
@@ -188,13 +213,15 @@ mod tests {
     use crate::lexer::Lexer;
     use crate::parser::Parser;
     use crate::evaluator::{eval, Object, ObjectType};
+    use crate::object::Environment;
 
     fn test_eval_program(input: &str) -> Box<dyn Object> {
+        let mut environment = Environment::new();
         println!("Test: Evaluating {}", input);
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program().unwrap();
-        eval(program.as_ref())
+        eval(program.as_ref(), &mut environment)
     }
 
 

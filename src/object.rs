@@ -1,6 +1,7 @@
 use std::any::Any;
 use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program};
 use crate::ast;
+use std::collections::HashMap;
 
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd)]
 pub enum ObjectType {
@@ -86,4 +87,22 @@ impl Object for Nil {
     }
 
     fn as_any(&self) -> &dyn Any { self }
+}
+
+pub struct Environment {
+    data: HashMap<String, Box<dyn Object>>
+}
+
+impl Environment {
+    pub fn new() -> Box<Environment> {
+        Box::new(Environment{data: HashMap::new()})
+    }
+
+    pub fn put(&mut self, k: String, v: Box<dyn Object>) {
+        self.data.insert(k, v);
+    }
+
+    pub fn get(&self, k:String) -> Option<Box<dyn Object>> {
+        self.get(k)
+    }
 }
