@@ -6,6 +6,7 @@ mod object;
 
 use linefeed::{Interface, ReadResult};
 use crate::lexer::Lexer;
+use crate::evaluator::eval;
 
 fn main() {
 
@@ -18,7 +19,7 @@ fn main() {
         let mut parser = parser::Parser::new(lexer);
         let program = parser.parse_program().unwrap();
 
-        println!("{:?}", program.statements);
+        println!("{:?}", eval(program.as_ref()));
     }
 
     println!("Good bye");

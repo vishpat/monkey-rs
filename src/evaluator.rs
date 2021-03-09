@@ -1,12 +1,14 @@
 use std::any::Any;
 use crate::object::{Object, ObjectType, Error, Nil};
-use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement, Expression, InfixExpression, PrefixExpression, Statement, IfExpression, BlockStatement, ReturnStatement};
+use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement,
+                 Expression, InfixExpression, PrefixExpression, Statement, IfExpression,
+                 BlockStatement, ReturnStatement};
 use std::borrow::Borrow;
 use std::ops::Deref;
 use crate::lexer::Token;
 
 pub fn eval(node: &dyn Node) -> Box<dyn Object> {
-    println!("Evaluating {:?}", node);
+    //println!("Evaluating {:?}", node);
 
     match node.ast_node_type() {
         AstNode::IntegerExpression => eval_int_expr(node),
