@@ -244,12 +244,7 @@ impl Parser {
                                          self.parse_expression(self.precedence(&token)))
                 }
                 Token::LParen => {
-                    let mut func_name: &Identifier = match left.as_any().downcast_ref::<Identifier>() {
-                        Some(b) => b,
-                        None => panic!("Invalid type, expected identifier for statement")
-                    };
-
-                    self.parse_function_call(func_name.value.to_string())
+                    self.parse_function_call(left)
                 }
                 _ => left
             };
@@ -282,10 +277,9 @@ impl Parser {
         parameters
     }
 
-    pub fn parse_function_call(&mut self, fn_name: String) -> Box<CallExpression> {
+    pub fn parse_function_call(&mut self, left: Box<dyn Expression>) -> Box<CallExpression> {
         let parameters = self.parse_call_parameters();
-        CallExpression::new(Identifier::new(Box::new(fn_name)),
-                            parameters)
+        CallExpression::new(left, parameters)
     }
 
     pub fn parse_function_parameters(&mut self) -> Box<Vec<Box<Identifier>>> {
