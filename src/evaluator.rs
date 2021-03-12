@@ -1,6 +1,6 @@
 use std::any::Any;
-use crate::object::{Object, ObjectType, Error, Nil, Environment};
-use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement, Expression, InfixExpression, PrefixExpression, Statement, IfExpression, BlockStatement, ReturnStatement, LetStatement};
+use crate::object::{Object, ObjectType, Error, Nil, Environment, Function};
+use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement, Expression, InfixExpression, PrefixExpression, Statement, IfExpression, BlockStatement, ReturnStatement, LetStatement, FunctionLiteral};
 use std::borrow::Borrow;
 use std::ops::Deref;
 use crate::lexer::Token;
@@ -19,6 +19,7 @@ pub fn eval(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Obje
         AstNode::ReturnStatement => eval_return_statement(node, environment),
         AstNode::LetStatement => eval_let_statement(node, environment),
         AstNode::BlockStatement => eval_block_statement(node, environment),
+        AstNode::FunctionLiteralExpression => eval_function_literal(node, environment),
         AstNode::Program => eval_program(node, environment),
         _ => Error::new(format!("Unrecognized AST node {:?}", node))
     }
@@ -36,6 +37,16 @@ pub fn eval_int_expr(node: &dyn Node) -> Box<dyn Object> {
     match node.ast_node_type() {
         AstNode::IntegerExpression =>
             Integer::new(node.as_any().downcast_ref::<Integer>().unwrap().value),
+        _ => Error::new(format!("Eval: Invalid integer expression {:?}", node))
+    }
+}
+
+pub fn eval_function_literal<'a>(node: &'a dyn Node, environment: &'a mut Box<Environment>) -> Box<dyn Object + 'a> {
+    match node.ast_node_type() {
+        AstNode::FunctionLiteralExpression => {
+            let function = node.as_any().downcast_ref::<FunctionLiteral>().unwrap();
+            Function::new(function, environment)
+        },
         _ => Error::new(format!("Eval: Invalid integer expression {:?}", node))
     }
 }

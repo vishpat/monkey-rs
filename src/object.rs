@@ -1,5 +1,5 @@
 use std::any::Any;
-use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program};
+use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, BlockStatement, FunctionLiteral};
 use crate::ast;
 use std::collections::HashMap;
 use crate::lexer::Token::Int;
@@ -90,7 +90,34 @@ impl Object for Nil {
     fn as_any(&self) -> &dyn Any { self }
 }
 
+#[derive(Debug)]
+pub struct Function<'a> {
+    func: &'a FunctionLiteral,
+    env: &'a Box<Environment>
+}
 
+impl <'b> Function {
+    pub fn new(func: &'b FunctionLiteral,
+                   env: &'b Box<Environment>) -> Box<Function<'b>> {
+        Box::new(Function{func, env})
+    }
+}
+
+impl Object for Function {
+    fn obj_type(&self) -> ObjectType {
+        ObjectType::Function
+    }
+
+    fn as_any(&self) -> &dyn Any { self }
+}
+
+impl std::fmt::Display for Function {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(fmt, "{:?} {:?}", self.func, self.env)
+    }
+}
+
+#[derive(Debug)]
 pub struct Environment {
     data: HashMap<String, Box<dyn Object>>,
     parent: Option<Box<Environment>>
