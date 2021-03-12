@@ -231,7 +231,7 @@ impl Parser {
             _ => panic!("Invalid token in expression {}", t)
         };
 
-        // To support
+        // To support - Function literal definition and call
         // fn(x, y){x + y;}(1, 2);
         //
         if left.node().ast_node_type() == AstNode::FunctionLiteralExpression &&
