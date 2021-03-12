@@ -176,9 +176,7 @@ impl Parser {
 
     fn parse_if_expression(&mut self) -> Box<dyn Expression> {
         self.expect_current_token(Token::If);
-        self.expect_current_token(Token::LParen);
-        let condition = self.parse_expression(Precedence::Lowest);
-        self.expect_next_token(Token::RParen);
+        let condition = self.parse_group_expression();
         let true_block = self.parse_block_statement();
 
         let mut false_block: Option<Box<BlockStatement>> = None;
