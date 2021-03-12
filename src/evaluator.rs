@@ -216,7 +216,7 @@ mod tests {
     use crate::object::Environment;
 
     fn test_eval_program(input: &str) -> Box<dyn Object> {
-        let mut environment = Environment::new();
+        let mut environment = Environment::new(None);
         println!("Test: Evaluating {}", input);
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);

@@ -15,7 +15,7 @@ fn main() {
 
     reader.set_prompt("monkey-rs> ").unwrap();
 
-    let mut environment = Environment::new();
+    let mut environment = Environment::new(None);
     while let ReadResult::Input(input) = reader.read_line().unwrap() {
         let lexer = Lexer::new(&*input);
         let mut parser = parser::Parser::new(lexer);

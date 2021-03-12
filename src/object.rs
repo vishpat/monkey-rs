@@ -90,13 +90,15 @@ impl Object for Nil {
     fn as_any(&self) -> &dyn Any { self }
 }
 
+
 pub struct Environment {
-    data: HashMap<String, Box<dyn Object>>
+    data: HashMap<String, Box<dyn Object>>,
+    parent: Option<Box<Environment>>
 }
 
 impl Environment {
-    pub fn new() -> Box<Environment> {
-        Box::new(Environment{data: HashMap::new()})
+    pub fn new(parent: Option<Box<Environment>>) -> Box<Environment> {
+        Box::new(Environment{data: HashMap::new(), parent })
     }
 
     pub fn put(&mut self, k: String, v: Box<dyn Object>) {
@@ -113,6 +115,8 @@ impl Environment {
                 _ => None
             };
             return val3;
+        } else if self.parent.is_some() {
+           return self.parent.as_ref().unwrap().get(k);
         }
 
         None
