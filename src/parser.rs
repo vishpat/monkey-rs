@@ -219,7 +219,6 @@ impl Parser {
     ///
     fn parse_expression(&mut self, precedence: Precedence) -> Box<dyn Expression> {
         let mut t = self.curr_token.clone();
-
         // Prefix
         let mut left: Box<dyn Expression> = match t {
             Token::Ident(s) => self.parse_identifier(),
@@ -231,6 +230,16 @@ impl Parser {
             Token::Function => self.parse_function(),
             _ => panic!("Invalid token in expression {}", t)
         };
+
+        // To support
+        // fn(x, y){x + y;}(1, 2);
+        //
+        if left.node().ast_node_type() == AstNode::FunctionLiteralExpression &&
+            self.curr_token == Token::LParen {
+            while self.peek() != Token::Semicolon {
+                return self.parse_function_call(left)
+            }
+        }
 
         // Infix
         while self.peek() != Token::Semicolon && self.peek_precedence() > precedence {
@@ -793,6 +802,7 @@ mod tests {
         sum();
         sum3(x, y, z);
         sum_expr(x, y + w, z);
+        fn(x, y){x + y;};(2, 3);
     ";
 
     #[test]
@@ -861,5 +871,19 @@ mod tests {
 
         assert_eq!(call_expr3.function.to_string(), "sum_expr");
         assert_eq!(call_expr3.parameters.len(), 3);
+
+        // fn(x, y){x + y;}(2, 3);
+        let expr_stmt4: &ExpressionStatement = match statements[3].as_any().downcast_ref::<ExpressionStatement>() {
+            Some(e) => e,
+            None => panic!("Invalid expression statement {}", statements[2])
+        };
+
+        let call_expr4 = match expr_stmt4.expr.as_any().downcast_ref::<CallExpression>() {
+            Some(c) => c,
+            None => panic!("Invalid call expression {}", expr_stmt3.expr)
+        };
+
+        assert_eq!(call_expr4.function.ast_node_type(), AstNode::FunctionLiteralExpression);
+        assert_eq!(call_expr4.parameters.len(), 2);
     }
 }

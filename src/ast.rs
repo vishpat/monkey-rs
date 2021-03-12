@@ -457,7 +457,7 @@ pub struct CallExpression {
 }
 
 impl CallExpression {
-    pub fn new(function: Box<Identifier>, parameters: Box<Vec<Box<dyn Expression>>>) -> Box<CallExpression> {
+    pub fn new(function: Box<dyn Expression>, parameters: Box<Vec<Box<dyn Expression>>>) -> Box<CallExpression> {
         Box::new(CallExpression{function, parameters})
     }
 }
