@@ -45,7 +45,7 @@ pub fn eval_function_literal<'a>(node: &'a dyn Node, environment: &'a mut Box<En
     match node.ast_node_type() {
         AstNode::FunctionLiteralExpression => {
             let function = node.as_any().downcast_ref::<FunctionLiteral>().unwrap();
-            Function::new(function, environment)
+            Function::new(function.parameters, function.block, environment)
         },
         _ => Error::new(format!("Eval: Invalid integer expression {:?}", node))
     }

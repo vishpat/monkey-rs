@@ -91,15 +91,17 @@ impl Object for Nil {
 }
 
 #[derive(Debug)]
-pub struct Function<'a> {
-    func: &'a FunctionLiteral,
-    env: &'a Box<Environment>
+pub struct Function {
+    params: Box<Vec<Box<Identifier>>>,
+    block: Box<BlockStatement>,
+    env: Box<Environment>
 }
 
-impl <'b> Function {
-    pub fn new(func: &'b FunctionLiteral,
-                   env: &'b Box<Environment>) -> Box<Function<'b>> {
-        Box::new(Function{func, env})
+impl Function {
+    pub fn new(params: Box<Vec<Box<Identifier>>>,
+                   block: Box<BlockStatement>,
+                   env: Box<Environment>) -> Box<Function> {
+        Box::new(Function{params, block, env})
     }
 }
 
