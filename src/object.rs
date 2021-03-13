@@ -91,16 +91,16 @@ impl Object for Nil {
 }
 
 #[derive(Debug)]
-pub struct Function {
-    params: Box<Vec<Box<Identifier>>>,
-    block: Box<BlockStatement>,
-    env: Box<Environment>
+pub struct Function<'a> {
+    params: &'a Box<Vec<Box<Identifier>>>,
+    block: &'a Box<BlockStatement>,
+    env: &'a Box<Environment>
 }
 
-impl Function {
-    pub fn new(params: Box<Vec<Box<Identifier>>>,
-                   block: Box<BlockStatement>,
-                   env: Box<Environment>) -> Box<Function> {
+impl <'b>Function<'_> {
+    pub fn new<'a>(params: &'a Box <Vec<Box<Identifier>>>,
+                   block: &'a Box<BlockStatement>,
+                   env: &'a Box<Environment>) -> Box<Function<'a>> {
         Box::new(Function{params, block, env})
     }
 }
@@ -115,7 +115,7 @@ impl Object for Function {
 
 impl std::fmt::Display for Function {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(fmt, "{:?} {:?}", self.func, self.env)
+        write!(fmt, "{:?} {:?}", self.params, self.env)
     }
 }
 

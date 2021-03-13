@@ -5,7 +5,7 @@ use std::borrow::Borrow;
 use std::ops::Deref;
 use crate::lexer::Token;
 
-pub fn eval(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
+pub fn eval<'a>(node: &'a dyn Node, environment: &'a mut Box<Environment>) -> Box<dyn Object + 'a> {
     //println!("Evaluating {:?}", node);
 
     match node.ast_node_type() {
@@ -45,13 +45,13 @@ pub fn eval_function_literal<'a>(node: &'a dyn Node, environment: &'a mut Box<En
     match node.ast_node_type() {
         AstNode::FunctionLiteralExpression => {
             let function = node.as_any().downcast_ref::<FunctionLiteral>().unwrap();
-            Function::new(function.parameters, function.block, environment)
+            Function::new(&function.parameters, &function.block, environment)
         },
         _ => Error::new(format!("Eval: Invalid integer expression {:?}", node))
     }
 }
 
-pub fn eval_identifier(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
+pub fn eval_identifier<'a>(node: &'a dyn Node, environment: &'a mut Box<Environment>) -> Box<dyn Object + 'a> {
     match node.ast_node_type() {
         AstNode::IdentifierExpression => {
             let identifer = node.as_any().downcast_ref::<Identifier>().unwrap();
@@ -63,7 +63,7 @@ pub fn eval_identifier(node: &dyn Node, environment: &mut Box<Environment>) -> B
     }
 }
 
-pub fn eval_expr_stmt(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
+pub fn eval_expr_stmt<'a>(node: &'a dyn Node, environment: &'a mut Box<Environment>) -> Box<dyn Object + 'a> {
     match node.ast_node_type() {
         AstNode::ExpressionStatement =>
             eval(node.as_any().downcast_ref::<ExpressionStatement>().unwrap().expr.node(),
@@ -72,7 +72,7 @@ pub fn eval_expr_stmt(node: &dyn Node, environment: &mut Box<Environment>) -> Bo
     }
 }
 
-pub fn eval_let_statement(node: &dyn Node, environment: &mut Box<Environment> ) -> Box<dyn Object> {
+pub fn eval_let_statement<'a>(node: &'a dyn Node, environment: &'a mut Box<Environment> ) -> Box<dyn Object + 'a> {
     match node.ast_node_type() {
         AstNode::LetStatement=> {
             let let_stmt=node.as_any().downcast_ref::<LetStatement>().unwrap();
@@ -84,7 +84,7 @@ pub fn eval_let_statement(node: &dyn Node, environment: &mut Box<Environment> ) 
     }
 }
 
-pub fn eval_prefix_expression(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
+pub fn eval_prefix_expression<'a>(node: &'a dyn Node, environment: &'a mut Box<Environment>) -> Box<dyn Object + 'a> {
 
     let prefix_expr: &PrefixExpression = match node.ast_node_type() {
         AstNode::PrefixExpression => node.as_any().downcast_ref::<PrefixExpression>().unwrap(),
@@ -115,7 +115,7 @@ pub fn eval_prefix_expression(node: &dyn Node, environment: &mut Box<Environment
     }
 }
 
-pub fn eval_infix_expression(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
+pub fn eval_infix_expression<'a>(node: &'a dyn Node, environment: &'a mut Box<Environment>) -> Box<dyn Object + 'a> {
     let infix_expr: &InfixExpression = match node.as_any().downcast_ref::<InfixExpression>() {
         Some(infix_expr) => infix_expr,
         _ => return Error::new(format!("Eval: Invalid boolean expression {:?}", node))
@@ -152,7 +152,7 @@ pub fn eval_infix_expression(node: &dyn Node, environment: &mut Box<Environment>
     }
 }
 
-pub fn eval_if_expression(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
+pub fn eval_if_expression<'a>(node: &'a dyn Node, environment: &'a mut Box<Environment>) -> Box<dyn Object + 'a> {
 
     let if_expr: &IfExpression = match node.as_any().downcast_ref::<IfExpression>() {
         Some(if_expr) => if_expr,
@@ -171,14 +171,14 @@ pub fn eval_if_expression(node: &dyn Node, environment: &mut Box<Environment>) -
     }
 }
 
-pub fn eval_return_statement(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
+pub fn eval_return_statement<'a>(node: &'a dyn Node, environment: &'a mut Box<Environment>) -> Box<dyn Object + 'a> {
     match node.as_any().downcast_ref::<ReturnStatement>(){
         Some(ret) => eval(ret.expr.node(), environment),
         _ => Error::new(format!("Return statement expected"))
     }
 }
 
-pub fn eval_block_statement(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
+pub fn eval_block_statement<'a>(node: &'a dyn Node, environment: &'a mut Box<Environment>) -> Box<dyn Object + 'a> {
     let block = match node.as_any().downcast_ref::<BlockStatement>() {
         Some(p) => p,
         _ => return Error::new(format!("Eval: Invalid Code Block {:?}", node))
@@ -200,7 +200,7 @@ pub fn eval_block_statement(node: &dyn Node, environment: &mut Box<Environment>)
     result
 }
 
-pub fn eval_program(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
+pub fn eval_program<'a>(node: &'a dyn Node, environment: &'a mut Box<Environment>) -> Box<dyn Object + 'a> {
     let program = match node.ast_node_type() {
         AstNode::Program => node.as_any().downcast_ref::<Program>().unwrap(),
         _ => return Error::new(format!("Eval: Invalid Program {:?}", node))
