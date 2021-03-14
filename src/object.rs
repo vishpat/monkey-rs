@@ -105,7 +105,7 @@ impl <'b>Function<'_> {
     }
 }
 
-impl Object for Function {
+impl <'a> Object for Function<'a> {
     fn obj_type(&self) -> ObjectType {
         ObjectType::Function
     }
@@ -113,7 +113,7 @@ impl Object for Function {
     fn as_any(&self) -> &dyn Any { self }
 }
 
-impl std::fmt::Display for Function {
+impl <'a> std::fmt::Display for Function<'a> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(fmt, "{:?} {:?}", self.params, self.env)
     }
