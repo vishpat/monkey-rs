@@ -9,7 +9,7 @@ pub struct Program {
 
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for stmt in &self.statements {
+        for stmt in &self.stmts {
             write!(f, "{}", stmt)?;
         }
         Ok(())
@@ -24,7 +24,7 @@ pub struct BlockStatement {
 impl fmt::Display for BlockStatement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{{");
-        for stmt in &self.statements {
+        for stmt in &self.stmts {
             write!(f, "{}", stmt)?;
         }
         write!(f, "}}");
@@ -35,14 +35,14 @@ impl fmt::Display for BlockStatement {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Prefix {
-    Plus,
+    Minus,
     Bang
 }
 
 impl fmt::Display for Prefix {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Prefix::Plus => write!(f, "+"),
+            Prefix::Minus => write!(f, "-"),
             Prefix::Bang => write!(f, "!"),
         }
     }

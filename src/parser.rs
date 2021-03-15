@@ -3,9 +3,6 @@ use crate::ast::*;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Display};
-use std::collections::HashMap;
-use crate::ast::AstNode::IdentifierExpression;
-use std::intrinsics::pref_align_of;
 
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd)]
 pub enum Precedence {
@@ -230,7 +227,7 @@ impl Parser {
     fn parse_expression(&mut self, precedence: Precedence) -> Box<Expression> {
         let mut t = self.curr_token.clone();
         // Prefix
-        let mut left: Box<Expression> = match t {
+        let mut expr: Box<Expression> = match t {
             Token::Ident(s) => self.parse_identifier(),
             Token::Int(s) => self.parse_integer(),
             Token::True | Token::False => self.parse_boolean(),
@@ -241,35 +238,37 @@ impl Parser {
             _ => panic!("Invalid token in expression {}", t)
         };
 
-        // To support
-        // fn(x, y){x + y;}(1, 2);
-        //
-        if left.node().ast_node_type() == AstNode::FunctionLiteralExpression &&
-            self.curr_token == Token::LParen {
-            while self.peek() != Token::Semicolon {
-                return self.parse_function_call(left)
-            }
-        }
-
         // Infix
         while self.peek() != Token::Semicolon && self.peek_precedence() > precedence {
             let token = self.next();
 
-            left = match token {
+            expr = match token {
                 Token::Plus | Token::Minus | Token::Slash | Token::Asterik |
                 Token::Eq | Token::NotEq | Token::Lt | Token::Gt => {
                     self.next();
-                    InfixExpression::new(left, Box::new(token.clone()),
-                                         self.parse_expression(self.precedence(&token)))
+                    let infix = match token {
+                        Token::Plus => Infix::Plus,
+                        Token::Minus => Infix::Minus,
+                        Token::Slash => Infix::Slash,
+                        Token::Asterik => Infix::Asterisk,
+                        Token::Eq => Infix::Eq,
+                        Token::NotEq => Infix::NotEq,
+                        Token::Lt => Infix::Lt,
+                        Token::Gt => Infix::Gt,
+                        _ => panic!("Invalid infix token {}", token),
+                    };
+
+                    Box::new(Expression::Infix(infix, expr,
+                                         self.parse_expression(self.precedence(&token))))
                 }
                 Token::LParen => {
-                    self.parse_function_call(left)
+                    self.parse_function_call(expr)
                 }
-                _ => left
+                _ => expr
             };
         }
 
-        left
+        expr
     }
 
     pub fn parse_call_parameters(&mut self) -> Vec<Expression> {
@@ -296,7 +295,7 @@ impl Parser {
         parameters
     }
 
-    pub fn parse_function_call(&mut self, left: Box<Expression>) -> Box<CallExpression> {
+    pub fn parse_function_call(&mut self, left: Box<Expression>) -> Box<Expression> {
         let parameters = self.parse_call_parameters();
         Box::new(Expression::Call(left, parameters))
     }
@@ -331,7 +330,7 @@ impl Parser {
         parameters
     }
 
-    pub fn parse_function(&mut self) -> Box<FunctionLiteral> {
+    pub fn parse_function(&mut self) -> Box<Expression> {
         self.expect_current_token(Token::Function);
 
         let parameters = self.parse_function_parameters();
