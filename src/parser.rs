@@ -119,7 +119,6 @@ impl Parser {
         self.next();
 
         if self.curr_token == Token::Semicolon {
-            self.next();
             return Box::new(Statement::Return(None))
         }
 
@@ -444,34 +443,38 @@ mod tests {
         }
     }
 
-//    const TEST_RETURN_STATEMENTS_STR: &str = "
-//        return 5;
-//        return 10 + 4 * 5;
-//    ";
-//
-//    #[test]
-//    fn test_parser_return_statements() {
-//        let statements = test_case_statements(TEST_RETURN_STATEMENTS_STR);
-//        assert_eq!(statements.len(), 2);
-//
-//        let mut idx = 0;
-//        for stmt in statements.iter() {
-//            assert_eq!(AstNode::ReturnStatement, stmt.ast_node_type());
-//
-//            let ret_stmt: &ReturnStatement = match stmt.as_any().downcast_ref::<ReturnStatement>() {
-//                Some(b) => b,
-//                None => panic!("Invalid type")
-//            };
-//
-//            match idx {
-//                0 => assert_eq!(format!("{}", ret_stmt), "return 5;"),
-//                1 => assert_eq!(format!("{}", ret_stmt), "return (10 + (4 * 5));"),
-//                _ => panic!("Unexcepted index {}", idx)
-//            }
-//
-//            idx += 1;
-//        }
-//    }
+    const TEST_RETURN_STATEMENTS_STR: &str = "
+        return;
+        return 5;
+        return 10 + 4 * 5;
+    ";
+
+    #[test]
+    fn test_parser_return_statements() {
+        let statements = test_case_statements(TEST_RETURN_STATEMENTS_STR);
+        assert_eq!(statements.len(), 3);
+
+        let mut idx = 0;
+        for stmt in statements.iter() {
+            let ret_stmt = match stmt {
+                Statement::Return(expr) => {
+                    match idx {
+                        0 => {
+                            assert_eq!(expr.is_none(), true);
+                            assert_eq!(stmt.to_string(), "return;")
+                        },
+                        1 => assert_eq!(stmt.to_string(), "return 5;"),
+                        2 => assert_eq!(stmt.to_string(), "return (10 + (4 * 5));"),
+                       _ => panic!("Unexcepted index {}", idx)
+                    }
+                },
+                _ => panic!("{}: Expected return statement but found {}", idx, stmt),
+            };
+
+            idx += 1;
+        }
+
+    }
 //
 //
 //    const TEST_INTEGERS_STR: &str = "
