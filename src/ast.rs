@@ -84,8 +84,8 @@ pub enum Expression {
     Boolean(bool),
     Prefix(Prefix, Box<Expression>),
     Infix(Infix, Box<Expression>, Box<Expression>),
-    If(Box<Expression>, BlockStatement, Option<BlockStatement>),
-    FunctionLiteral(Vec<String>, BlockStatement),
+    If(Box<Expression>, Box<BlockStatement>, Option<Box<BlockStatement>>),
+    FunctionLiteral(Vec<String>, Box<BlockStatement>),
     Call(Box<Expression>, Vec<Expression>),
 }
 
@@ -114,9 +114,9 @@ impl fmt::Display for Expression {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
-    Let(String, Expression),
-    Return(Option<Expression>),
-    Expression(Expression),
+    Let(String, Box<Expression>),
+    Return(Option<Box<Expression>>),
+    Expression(Box<Expression>),
 }
 
 impl fmt::Display for Statement {
@@ -127,35 +127,5 @@ impl fmt::Display for Statement {
             Statement::Return(Some(val)) => write!(f, "return {};", val),
             Statement::Expression(exp) => write!(f, "{}", exp),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::ast::{Identifier, InfixExpression, LetStatement, Node, AstNode};
-    use crate::lexer::Token;
-
-    #[test]
-    fn test_infix_expression() {
-        let x =
-            Box::new(Identifier { value: Box::new(String::from("x")) });
-        assert_eq!(x.ast_node_type(), AstNode::IdentifierExpression);
-
-        let y =
-            Box::new(Identifier { value: Box::new(String::from("y")) });
-        assert_eq!(y.ast_node_type(), AstNode::IdentifierExpression);
-
-        let z =
-            Box::new(Identifier { value: Box::new(String::from("z")) });
-        assert_eq!(z.ast_node_type(), AstNode::IdentifierExpression);
-
-        let infix_expr = Box::new(InfixExpression { left: x, op: Box::new(Token::Plus), right: y });
-        assert_eq!(infix_expr.ast_node_type(), AstNode::InfixExpression);
-
-        let let_expr = Box::new(LetStatement { id: z, expr: infix_expr });
-        assert_eq!(let_expr.ast_node_type(), AstNode::LetStatement);
-
-        let let_expr_str = format!("{}", let_expr);
-        assert_eq!("let z = (x + y);", let_expr_str);
     }
 }

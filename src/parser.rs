@@ -5,6 +5,7 @@ use std::fmt;
 use std::fmt::{Debug, Display};
 use std::collections::HashMap;
 use crate::ast::AstNode::IdentifierExpression;
+use std::intrinsics::pref_align_of;
 
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd)]
 pub enum Precedence {
@@ -94,11 +95,11 @@ impl Parser {
         }
     }
 
-    fn parse_let_statement(&mut self) -> Box<dyn Statement> {
+    fn parse_let_statement(&mut self) -> Box<Statement> {
         // Get identifier token
         let token = self.next();
         let identifer = match token {
-            Token::Ident(s) => Identifier::new(Box::new(s)),
+            Token::Ident(s) => Expression::Identifier(s),
             _ => panic!("Identifier token not found in let statement {}", token)
         };
 
@@ -108,65 +109,74 @@ impl Parser {
 
         // Parse expression
         let expr = self.parse_expression(Precedence::Lowest);
-        let let_stmt = LetStatement::new(identifer, expr);
+        let let_stmt = Statement::Let(identifer.to_string(), expr);
 
         if self.peek() == Token::Semicolon {
             self.next();
         }
 
-        let_stmt
+        Box::new(let_stmt)
     }
 
-    fn parse_return_statement(&mut self) -> Box<dyn Statement> {
+    fn parse_return_statement(&mut self) -> Box<Statement> {
         self.next();
+
+        if self.curr_token == Token::Semicolon {
+            self.next();
+            return Box::new(Statement::Return(None))
+        }
+
         let expr = self.parse_expression(Precedence::Lowest);
 
         if self.peek() == Token::Semicolon {
             self.next();
         }
 
-        ReturnStatement::new(expr)
+        Box::new(Statement::Return(Some(expr)))
     }
 
-    fn parse_identifier(&mut self) -> Box<dyn Expression> {
+    fn parse_identifier(&mut self) -> Box<Expression> {
         let curr_token = &self.curr_token;
 
         match curr_token {
-            Token::Ident(s) => Identifier::new(Box::new(s.clone())),
+            Token::Ident(s) => Box::new(Expression::Identifier(s.to_string())),
             _ => panic!("Unable to parse identifier {}", self.curr_token)
         }
     }
 
-    fn parse_integer(&mut self) -> Box<dyn Expression> {
+    fn parse_integer(&mut self) -> Box<Expression> {
         let curr_token = &self.curr_token;
 
         match curr_token {
-            Token::Int(s) => Integer::new(*s),
+            Token::Int(s) => Box::new(Expression::IntegerLiteral(*s)),
             _ => panic!("Unable to parse integer {}", self.curr_token)
         }
     }
 
-    fn parse_boolean(&mut self) -> Box<dyn Expression> {
+    fn parse_boolean(&mut self) -> Box<Expression> {
         let curr_token = &self.curr_token;
 
         match curr_token {
-            Token::True => Boolean::new(true),
-            Token::False => Boolean::new(false),
+            Token::True => Box::new(Expression::Boolean(true)),
+            Token::False => Box::new(Expression::Boolean(false)),
             _ => panic!("Invalid boolean {}", curr_token)
         }
     }
 
-    fn parse_prefix_expression(&mut self) -> Box<dyn Expression> {
+    fn parse_prefix_expression(&mut self) -> Box<Expression> {
         let op = self.curr_token.clone();
 
-        assert_eq!(op == Token::Bang || op == Token::Minus, true);
+        let prefix = match op {
+            Token::Bang => Prefix::Bang,
+            Token::Minus => Prefix::Minus,
+            _ => panic!("Invalid token {} prefix expression", op)
+        };
 
         self.next();
-        PrefixExpression::new(Box::new(op),
-                              self.parse_expression(Precedence::Prefix))
+        Box::new(Expression::Prefix(prefix, self.parse_expression(Precedence::Prefix)))
     }
 
-    fn parse_group_expression(&mut self) -> Box<dyn Expression> {
+    fn parse_group_expression(&mut self) -> Box<Expression> {
         self.expect_current_token(Token::LParen);
         let expr = self.parse_expression(Precedence::Lowest);
         self.expect_next_token(Token::RParen);
@@ -174,7 +184,7 @@ impl Parser {
         expr
     }
 
-    fn parse_if_expression(&mut self) -> Box<dyn Expression> {
+    fn parse_if_expression(&mut self) -> Box<Expression> {
         self.expect_current_token(Token::If);
         let condition = self.parse_group_expression();
         let true_block = self.parse_block_statement();
@@ -184,43 +194,43 @@ impl Parser {
             false_block = Some(self.parse_block_statement());
         }
 
-        IfExpression::new(condition, true_block, false_block)
+       Box::new(Expression::If(condition, true_block, false_block))
     }
 
     fn parse_block_statement(&mut self) -> Box<BlockStatement> {
-        let mut statements: Vec<Box<dyn Statement>> = vec![];
+        let mut statements: Vec<Statement> = vec![];
 
         self.expect_next_token(Token::LBrace);
         self.next();
 
         while self.curr_token != Token::Eof && self.curr_token != Token::RBrace {
             let statement = self.parse_statement();
-            statements.push(statement);
+            statements.push(*statement);
             self.next();
         }
 
         self.expect_current_token(Token::RBrace);
 
-        BlockStatement::new(Box::new(statements))
+        Box::new(BlockStatement{stmts: statements})
     }
 
-    pub fn parse_expression_statement(&mut self) -> Box<dyn Statement> {
+    pub fn parse_expression_statement(&mut self) -> Box<Statement> {
         let expr = self.parse_expression(Precedence::Lowest);
         if self.peek() == Token::Semicolon {
             self.next();
         }
 
-        ExpressionStatement::new(expr)
+        Box::new(Statement::Expression(expr))
     }
 
     ///
     ///  This function has been implemented using the TDOP algorithm mentioned
     /// [here](https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing)
     ///
-    fn parse_expression(&mut self, precedence: Precedence) -> Box<dyn Expression> {
+    fn parse_expression(&mut self, precedence: Precedence) -> Box<Expression> {
         let mut t = self.curr_token.clone();
         // Prefix
-        let mut left: Box<dyn Expression> = match t {
+        let mut left: Box<Expression> = match t {
             Token::Ident(s) => self.parse_identifier(),
             Token::Int(s) => self.parse_integer(),
             Token::True | Token::False => self.parse_boolean(),
@@ -262,8 +272,8 @@ impl Parser {
         left
     }
 
-    pub fn parse_call_parameters(&mut self) -> Box<Vec<Box<dyn Expression>>> {
-        let mut parameters: Box<Vec<Box<dyn Expression>>> = Box::new(vec![]);
+    pub fn parse_call_parameters(&mut self) -> Vec<Expression> {
+        let mut parameters: Vec<Expression> = vec![];
         self.expect_current_token(Token::LParen);
 
         if self.peek() == Token::RParen {
@@ -274,7 +284,7 @@ impl Parser {
 
         while self.curr_token != Token::RParen {
             let expr = self.parse_expression(Precedence::Lowest);
-            parameters.push(expr);
+            parameters.push(*expr);
 
             if self.peek() == Token::Comma {
                 self.next();
@@ -286,13 +296,13 @@ impl Parser {
         parameters
     }
 
-    pub fn parse_function_call(&mut self, left: Box<dyn Expression>) -> Box<CallExpression> {
+    pub fn parse_function_call(&mut self, left: Box<Expression>) -> Box<CallExpression> {
         let parameters = self.parse_call_parameters();
-        CallExpression::new(left, parameters)
+        Box::new(Expression::Call(left, parameters))
     }
 
-    pub fn parse_function_parameters(&mut self) -> Box<Vec<Box<Identifier>>> {
-        let mut parameters: Box<Vec<Box<Identifier>>> = Box::new(vec![]);
+    pub fn parse_function_parameters(&mut self) -> Vec<String> {
+        let mut parameters: Vec<String> = vec![];
 
         self.expect_current_token(Token::LParen);
 
@@ -306,7 +316,7 @@ impl Parser {
             let idf = &self.curr_token;
 
             let identifier = match idf {
-                Token::Ident(i) => Identifier::new(Box::new(i.to_string())),
+                Token::Ident(i) => i.to_string(),
                 _ => panic!("Unexpected function parameter {}", idf)
             };
             parameters.push(identifier);
@@ -327,10 +337,10 @@ impl Parser {
         let parameters = self.parse_function_parameters();
         let body = self.parse_block_statement();
 
-        FunctionLiteral::new(parameters, body)
+        Box::new(Expression::FunctionLiteral(parameters, body))
     }
 
-    pub fn parse_statement(&mut self) -> Box<dyn Statement> {
+    pub fn parse_statement(&mut self) -> Box<Statement> {
         let statement = match self.curr_token {
             Token::Let => self.parse_let_statement(),
             Token::Return => self.parse_return_statement(),
@@ -340,11 +350,11 @@ impl Parser {
     }
 
     pub fn parse_program(&mut self) -> Result<Box<Program>, ParseError> {
-        let mut program = Box::new(Program { statements: vec![] });
+        let mut program = Box::new(Program { stmts: vec![] });
 
         while self.curr_token != Token::Eof {
             let statement = self.parse_statement();
-            program.statements.push(statement);
+            program.stmts.push(*statement);
             self.next();
         }
 
