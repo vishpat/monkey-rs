@@ -493,8 +493,8 @@ mod tests {
 
 
     const TEST_PREFIX_STR: &str = "
-        let x = !y;
-        let x = -1;
+        !y;
+        -1;
     ";
 
     #[test]
@@ -504,39 +504,24 @@ mod tests {
 
         let mut idx = 0;
         for stmt in statements.iter() {
-            let let_stmt= match stmt {
-                Statement::Let(identifier, expr) => {
-                    match idx {
-                        0 => {
-                            assert_eq!(*identifier, "x");
-                            match &**expr  {
-                                Expression::Prefix(prefix, expr2) => {
-                                    assert_eq!(*prefix, Prefix::Bang);
-                                    match &**expr2 {
-                                        Expression::Identifier(i) => assert_eq!(*i, "y"),
-                                        _ => panic!("Expected identifier"),
-                                    }
-                                },
-                                _ => panic!("Expected Prefix expression"),
-                            }
+            let prefix_expr= match stmt {
+                Statement::Expression(expr) => {
+                    match &**expr {
+                       Expression::Prefix(prefix, expr2) => match idx {
+                            0 => {
+                                assert_eq!(*prefix, Prefix::Bang);
+                                assert_eq!(expr2.to_string(), "y");
+                            },
+                            1 => {
+                                assert_eq!(*prefix, Prefix::Minus);
+                                assert_eq!(expr2.to_string(), "1");
+                            },
+                            _ => panic!("Unexpected expression index {}", idx)
                         },
-                        1 => {
-                            assert_eq!(*identifier, "x");
-                            match &**expr  {
-                                Expression::Prefix(prefix, expr2) => {
-                                    assert_eq!(*prefix, Prefix::Minus);
-                                    match &**expr2 {
-                                        Expression::IntegerLiteral(i) => assert_eq!(*i, 1),
-                                        _ => panic!("Expected integer"),
-                                    }
-                                },
-                                _ => panic!("Expected Prefix expression"),
-                            }
-                        },
-                        _ => panic!("Unexcepted index {}", idx)
+                        _ => panic!("Expected prefix expression"),
                     }
                 },
-                _ => panic!("{}: Expected return statement but found {}", idx, stmt),
+                _ => panic!("Expected statement with prefix expression but found {}", stmt),
             };
             idx += 1;
         }
