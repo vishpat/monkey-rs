@@ -597,8 +597,7 @@ mod tests {
     fn test_parser_if_else() {
         let statements = test_case_statements(TEST_IF_ELSE_STR);
         assert_eq!(statements.len(), 1);
-        let mut stmt = &statements[0];
-        assert_eq!(statements.len(), 1);
+
         let mut stmt = &statements[0];
         match stmt {
             Statement::Expression(expr) => {
@@ -614,51 +613,34 @@ mod tests {
             _ => panic!("Unexpected expression found")
         }
     }
-//
-//    const TEST_FUNCTION_STR1: &str = "
-//        fn(x,y) {
-//            x + y;
-//        }
-//    ";
-//
-//    #[test]
-//    fn test_parser_function() {
-//        let statements = test_case_statements(TEST_FUNCTION_STR1);
-//        assert_eq!(statements.len(), 1);
-//        let mut stmt = &statements[0];
-//
-//        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
-//
-//        let mut expr_stmt: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
-//            Some(b) => b,
-//            None => panic!("Invalid type, expected expression statement")
-//        };
-//
-//        let expr = &expr_stmt.expr;
-//        assert_eq!(AstNode::FunctionLiteralExpression, expr.ast_node_type());
-//        let mut func_literal: &FunctionLiteral = match expr.as_any().downcast_ref::<FunctionLiteral>() {
-//            Some(b) => b,
-//            None => panic!("Invalid type, expected expression statement")
-//        };
-//
-//        let parameters = &func_literal.parameters;
-//
-//        let param1 = &parameters[0];
-//        assert_eq!(param1.value, Box::new(String::from("x")));
-//
-//        let param2 = &parameters[1];
-//        assert_eq!(param2.value, Box::new(String::from("y")));
-//
-//        let stmt = &func_literal.block.block[0];
-//        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
-//
-//        let expr_stmt2: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
-//            Some(b) => b,
-//            None => panic!("Invalid type, expected expression statement")
-//        };
-//
-//        assert_eq!(format!("{}", expr_stmt2.expr), "(x + y)");
-//    }
+
+    const TEST_FUNCTION_STR1: &str = "
+        fn(x,y,z) {
+            let z = x + y;
+            z
+        }
+    ";
+
+    #[test]
+    fn test_parser_function() {
+        let statements = test_case_statements(TEST_FUNCTION_STR1);
+        assert_eq!(statements.len(), 1);
+        let mut stmt = &statements[0];
+        match stmt {
+            Statement::Expression(expr) => {
+                match &**expr {
+                    Expression::FunctionLiteral(params, block) => {
+                        assert_eq!(params.iter().as_ref().join(","), "x,y,z");
+                        assert_eq!(block.stmts[0].to_string(), "let z = (x + y);");
+                        assert_eq!(block.stmts[1].to_string(), "z;");
+                    }
+                    _ => panic!("Expected function literal")
+                }
+            }
+            _ => panic!("Unexpected expression found")
+        }
+
+    }
 //
 //    const TEST_FUNCTION_STR2: &str = "
 //        fn() {
