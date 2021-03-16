@@ -123,7 +123,7 @@ impl fmt::Display for Statement {
             Statement::Let(s, exp) => write!(f, "let {} = {};", s, exp),
             Statement::Return(None) => write!(f, "return;"),
             Statement::Return(Some(val)) => write!(f, "return {};", val),
-            Statement::Expression(exp) => write!(f, "{}", exp),
+            Statement::Expression(exp) => write!(f, "{};", exp),
         }
     }
 }

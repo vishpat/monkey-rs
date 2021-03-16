@@ -581,64 +581,39 @@ mod tests {
             }
             _ => panic!("Unexpected expression found")
         }
-
-
     }
-//
-//    const TEST_IF_ELSE_STR: &str = "
-//        if (x > y) {
-//            x*2 + 3
-//        } else {
-//            4 + 5*y
-//        }
-//    ";
-//
-//    #[test]
-//    fn test_parser_if_else() {
-//        let statements = test_case_statements(TEST_IF_ELSE_STR);
-//        assert_eq!(statements.len(), 1);
-//        let mut stmt = &statements[0];
-//
-//        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
-//
-//        let mut expr_stmt: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
-//            Some(b) => b,
-//            None => panic!("Invalid type, expected expression statement")
-//        };
-//
-//        let expr = &expr_stmt.expr;
-//        assert_eq!(AstNode::IfExpression, expr.ast_node_type());
-//
-//        let if_expr: &IfExpression = match expr.as_any().downcast_ref::<IfExpression>() {
-//            Some(x) => x,
-//            None => panic!("Expected if expression")
-//        };
-//
-//        let cond = &if_expr.cond;
-//        assert_eq!(format!("{}", cond), "(x > y)");
-//
-//        let true_block = &if_expr.true_block;
-//
-//        stmt = &true_block.block[0];
-//        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
-//
-//        let expr_stmt2: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
-//            Some(b) => b,
-//            None => panic!("Invalid type, expected expression statement")
-//        };
-//
-//        assert_eq!(format!("{}", expr_stmt2.expr), "((x * 2) + 3)");
-//
-//        let false_block = &if_expr.false_block.as_ref().unwrap();
-//        stmt = &false_block.block[0];
-//        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
-//
-//        let expr_stmt3: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
-//            Some(b) => b,
-//            None => panic!("Invalid type, expected expression statement")
-//        };
-//        assert_eq!(format!("{}", expr_stmt3.expr), "(4 + (5 * y))");
-//    }
+
+    const TEST_IF_ELSE_STR: &str = "
+        if (x > y) {
+            x*2 + 3;
+            let x = y;
+        } else {
+            4 + 5*y;
+            x + y;
+        }
+    ";
+
+    #[test]
+    fn test_parser_if_else() {
+        let statements = test_case_statements(TEST_IF_ELSE_STR);
+        assert_eq!(statements.len(), 1);
+        let mut stmt = &statements[0];
+        assert_eq!(statements.len(), 1);
+        let mut stmt = &statements[0];
+        match stmt {
+            Statement::Expression(expr) => {
+                match &**expr {
+                    Expression::If(cond, true_block, false_block) => {
+                        assert_eq!(cond.to_string(), "(x > y)");
+                        assert_eq!(true_block.to_string(), "{((x * 2) + 3);let x = y;}");
+                        assert_eq!(false_block.as_ref().unwrap().to_string(), "{(4 + (5 * y));(x + y);}");
+                    }
+                    _ => panic!("Expected if expression")
+                }
+            }
+            _ => panic!("Unexpected expression found")
+        }
+    }
 //
 //    const TEST_FUNCTION_STR1: &str = "
 //        fn(x,y) {
