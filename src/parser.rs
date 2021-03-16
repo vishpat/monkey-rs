@@ -639,135 +639,81 @@ mod tests {
             }
             _ => panic!("Unexpected expression found")
         }
+    }
+
+    const TEST_FUNCTION_STR2: &str = "
+        fn() {
+            10*20;
+        }
+    ";
+
+    #[test]
+    fn test_parser_function_no_parameters() {
+        let statements = test_case_statements(TEST_FUNCTION_STR2);
+        assert_eq!(statements.len(), 1);
+        let mut stmt = &statements[0];
+        match stmt {
+            Statement::Expression(expr) => {
+                match &**expr {
+                    Expression::FunctionLiteral(params, block) => {
+                        assert_eq!(params.len(), 0);
+                        assert_eq!(block.stmts[0].to_string(), "(10 * 20);");
+                    }
+                    _ => panic!("Expected function literal")
+                }
+            }
+            _ => panic!("Unexpected expression found")
+        }
+    }
+
+    const TEST_FUNCTION_CALL_STR: &str = "
+        sum();
+        sum3(x, y, z);
+        sum_expr(x, y + w, z);
+        fn(x, y){x + y;};(2, 3);
+    ";
+
+    #[test]
+    fn test_parser_call_with_parameters() {
+        let statements = test_case_statements(TEST_FUNCTION_CALL_STR);
+        assert_eq!(statements.len(), 4);
+
+        let mut idx = 0;
+        for idx in 0..statements.len() {
+            match &statements[idx] {
+                Statement::Expression(expr) => {
+                    match &**expr {
+                        Expression::Call(func_expr, params) => {
+                            match idx {
+                                0 => {
+                                    assert_eq!(func_expr.to_string(), "sum");
+                                    assert_eq!(params.len(), 0);
+                                },
+                                1 => {
+                                    assert_eq!(func_expr.to_string(), "sum3");
+                                    assert_eq!(params.iter().map(|p| p.to_string()).collect::<Vec<String>>().join(","), "x,y,z");
+                                },
+                                2 => {
+                                    assert_eq!(func_expr.to_string(), "sum_expr");
+                                    assert_eq!(params.iter().map(|p| p.to_string()).collect::<Vec<String>>().join(","),
+                                               "x,(y + w),z");
+                                },
+                                3 => {
+                                    assert_eq!(func_expr.to_string(), "fn(x,y){(x + y);}");
+                                    assert_eq!(params.iter().map(|p| p.to_string()).collect::<Vec<String>>().join(","),
+                                               "2,3");
+                                }
+                                _ => panic!("Unexpected idx {}", idx),
+                            }
+
+
+                        },
+                        _ => panic!("Expected call expression")
+                    }
+                },
+                _ => panic!("Expected a expression statement"),
+            }
+        }
 
     }
-//
-//    const TEST_FUNCTION_STR2: &str = "
-//        fn() {
-//            10*20;
-//        }
-//    ";
-//
-//    #[test]
-//    fn test_parser_function_no_parameters() {
-//        let statements = test_case_statements(TEST_FUNCTION_STR2);
-//        assert_eq!(statements.len(), 1);
-//        let mut stmt = &statements[0];
-//
-//        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
-//
-//        let mut expr_stmt: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
-//            Some(b) => b,
-//            None => panic!("Invalid type, expected expression statement")
-//        };
-//
-//        let expr = &expr_stmt.expr;
-//        assert_eq!(AstNode::FunctionLiteralExpression, expr.ast_node_type());
-//        let mut func_literal: &FunctionLiteral = match expr.as_any().downcast_ref::<FunctionLiteral>() {
-//            Some(b) => b,
-//            None => panic!("Invalid type, expected expression statement")
-//        };
-//
-//        let parameters = &func_literal.parameters;
-//        assert_eq!(parameters.len(), 0);
-//
-//        let stmt = &func_literal.block.block[0];
-//        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
-//
-//        let expr_stmt2: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
-//            Some(b) => b,
-//            None => panic!("Invalid type, expected expression statement")
-//        };
-//
-//        assert_eq!(format!("{}", expr_stmt2.expr), "(10 * 20)");
-//    }
-//
-//    const TEST_FUNCTION_CALL_STR: &str = "
-//        sum();
-//        sum3(x, y, z);
-//        sum_expr(x, y + w, z);
-//        fn(x, y){x + y;};(2, 3);
-//    ";
-//
-//    #[test]
-//    fn test_parser_call_with_parameters() {
-//        let statements = test_case_statements(TEST_FUNCTION_CALL_STR);
-//
-//        // sum()
-//        let expr_stmt: &ExpressionStatement = match statements[0].as_any().downcast_ref::<ExpressionStatement>() {
-//            Some(e) => e,
-//            None => panic!("Invalid expression statement {}", statements[0])
-//        };
-//
-//        let call_expr = match expr_stmt.expr.as_any().downcast_ref::<CallExpression>() {
-//            Some(c) => c,
-//            None => panic!("Invalid call expression {}", expr_stmt.expr)
-//        };
-//
-//        assert_eq!(call_expr.function.to_string(), "sum");
-//        assert_eq!(call_expr.parameters.len(), 0);
-//
-//        // sum(x, y, z)
-//        let expr_stmt2: &ExpressionStatement = match statements[1].as_any().downcast_ref::<ExpressionStatement>() {
-//            Some(e) => e,
-//            None => panic!("Invalid expression statement {}", statements[1])
-//        };
-//
-//        let call_expr2 = match expr_stmt2.expr.as_any().downcast_ref::<CallExpression>() {
-//            Some(c) => c,
-//            None => panic!("Invalid call expression {}", expr_stmt2.expr)
-//        };
-//
-//        assert_eq!(call_expr2.function.to_string(), "sum3");
-//        assert_eq!(call_expr2.parameters.len(), 3);
-//
-//        let param1 = &call_expr2.parameters[0];
-//        let param1_id = match param1.as_any().downcast_ref::<Identifier>() {
-//            Some(i) => i,
-//            None => panic!("Invalid param {}", param1)
-//        };
-//        assert_eq!(param1_id.value, Box::new("x".to_string()));
-//
-//        let param2 = &call_expr2.parameters[1];
-//        let param2_id = match param2.as_any().downcast_ref::<Identifier>() {
-//            Some(i) => i,
-//            None => panic!("Invalid param {}", param2)
-//        };
-//        assert_eq!(param2_id.value, Box::new("y".to_string()));
-//
-//        let param3 = &call_expr2.parameters[2];
-//        let param3_id = match param3.as_any().downcast_ref::<Identifier>() {
-//            Some(i) => i,
-//            None => panic!("Invalid param {}", param3)
-//        };
-//        assert_eq!(param3_id.value, Box::new("z".to_string()));
-//
-//        // sum_expr(x, y + w, z);
-//        let expr_stmt3: &ExpressionStatement = match statements[2].as_any().downcast_ref::<ExpressionStatement>() {
-//            Some(e) => e,
-//            None => panic!("Invalid expression statement {}", statements[2])
-//        };
-//
-//        let call_expr3 = match expr_stmt3.expr.as_any().downcast_ref::<CallExpression>() {
-//            Some(c) => c,
-//            None => panic!("Invalid call expression {}", expr_stmt3.expr)
-//        };
-//
-//        assert_eq!(call_expr3.function.to_string(), "sum_expr");
-//        assert_eq!(call_expr3.parameters.len(), 3);
-//
-//        // fn(x, y){x + y;}(2, 3);
-//        let expr_stmt4: &ExpressionStatement = match statements[3].as_any().downcast_ref::<ExpressionStatement>() {
-//            Some(e) => e,
-//            None => panic!("Invalid expression statement {}", statements[2])
-//        };
-//
-//        let call_expr4 = match expr_stmt4.expr.as_any().downcast_ref::<CallExpression>() {
-//            Some(c) => c,
-//            None => panic!("Invalid call expression {}", expr_stmt3.expr)
-//        };
-//
-//        assert_eq!(call_expr4.function.ast_node_type(), AstNode::FunctionLiteralExpression);
-//        assert_eq!(call_expr4.parameters.len(), 2);
-//    }
 }
