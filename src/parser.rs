@@ -365,8 +365,9 @@ mod tests {
     use crate::lexer::{Lexer, Token};
     use crate::parser::Parser;
     use std::any::Any;
-    use crate::ast::Statement;
+    use crate::ast::{Statement, Prefix};
     use crate::ast::Expression;
+    use std::process::id;
 
     const TEST_STR: &str = "
     let five = 5;
@@ -489,124 +490,57 @@ mod tests {
         }
 
     }
-//
-//
-//    const TEST_INTEGERS_STR: &str = "
-//        let x = 5;
-//        let y = 10;
-//    ";
-//
-//    #[test]
-//    fn test_parser_integer_expressions() {
-//        let statements = test_case_statements(TEST_INTEGERS_STR);
-//
-//        assert_eq!(statements.len(), 2);
-//        let mut idx = 0;
-//        for stmt in statements.iter() {
-//            assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
-//
-//            let let_stmt: &LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
-//                Some(b) => {
-//                    assert_eq!(b.expr.ast_node_type(), AstNode::IntegerExpression);
-//                    b
-//                }
-//                None => panic!("Invalid type")
-//            };
-//
-//            match idx {
-//                0 => {
-//                    assert_eq!(format!("{}", let_stmt.expr), "5")
-//                }
-//                1 => {
-//                    assert_eq!(format!("{}", let_stmt.expr), "10")
-//                }
-//                _ => panic!("Unexcepted index {}", idx)
-//            }
-//
-//            idx += 1;
-//        }
-//    }
-//
-//    const TEST_BOOLEAN_STR: &str = "
-//        let x = true;
-//        let y = false;
-//    ";
-//
-//    #[test]
-//    fn test_parser_boolean_expressions() {
-//        let statements = test_case_statements(TEST_BOOLEAN_STR);
-//
-//        assert_eq!(statements.len(), 2);
-//        let mut idx = 0;
-//        for stmt in statements.iter() {
-//            assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
-//
-//            let let_stmt: &LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
-//                Some(b) => {
-//                    assert_eq!(b.expr.ast_node_type(), AstNode::BooleanExpression);
-//                    b
-//                }
-//                None => panic!("Invalid type, expected let statement")
-//            };
-//
-//            match idx {
-//                0 => {
-//                    assert_eq!(format!("{}", let_stmt.expr), "true")
-//                }
-//                1 => {
-//                    assert_eq!(format!("{}", let_stmt.expr), "false")
-//                }
-//                _ => panic!("Unexcepted index {}", idx)
-//            }
-//
-//            idx += 1;
-//        }
-//    }
-//
-//    const TEST_PREFIX_STR: &str = "
-//        let x = !y;
-//        let x = -1;
-//    ";
-//
-//    #[test]
-//    fn test_parser_prefix_expressions() {
-//        let statements = test_case_statements(TEST_PREFIX_STR);
-//        assert_eq!(statements.len(), 2);
-//
-//        let mut idx = 0;
-//        for stmt in statements.iter() {
-//            assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
-//
-//            let let_stmt: &LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
-//                Some(b) => {
-//                    assert_eq!(b.expr.ast_node_type(), AstNode::PrefixExpression);
-//                    b
-//                }
-//                None => panic!("Invalid type")
-//            };
-//
-//            let prefix_expr: &PrefixExpression = match let_stmt.expr.as_any().downcast_ref::<PrefixExpression>() {
-//                Some(px) => {
-//                    px
-//                }
-//                None => panic!("Invalid type, expected prefix expression")
-//            };
-//
-//            match idx {
-//                0 => {
-//                    assert_eq!(format!("{}", prefix_expr.op), "!");
-//                    assert_eq!(format!("{}", prefix_expr.expr), "y");
-//                }
-//                1 => {
-//                    assert_eq!(format!("{}", prefix_expr.op), "-");
-//                    assert_eq!(format!("{}", prefix_expr.expr), "1");
-//                }
-//                _ => panic!("Unexcepted index {}", idx)
-//            }
-//
-//            idx += 1;
-//        }
-//    }
+
+
+    const TEST_PREFIX_STR: &str = "
+        let x = !y;
+        let x = -1;
+    ";
+
+    #[test]
+    fn test_parser_prefix_expressions() {
+        let statements = test_case_statements(TEST_PREFIX_STR);
+        assert_eq!(statements.len(), 2);
+
+        let mut idx = 0;
+        for stmt in statements.iter() {
+            let let_stmt= match stmt {
+                Statement::Let(identifier, expr) => {
+                    match idx {
+                        0 => {
+                            assert_eq!(*identifier, "x");
+                            match &**expr  {
+                                Expression::Prefix(prefix, expr2) => {
+                                    assert_eq!(*prefix, Prefix::Bang);
+                                    match &**expr2 {
+                                        Expression::Identifier(i) => assert_eq!(*i, "y"),
+                                        _ => panic!("Expected identifier"),
+                                    }
+                                },
+                                _ => panic!("Expected Prefix expression"),
+                            }
+                        },
+                        1 => {
+                            assert_eq!(*identifier, "x");
+                            match &**expr  {
+                                Expression::Prefix(prefix, expr2) => {
+                                    assert_eq!(*prefix, Prefix::Minus);
+                                    match &**expr2 {
+                                        Expression::IntegerLiteral(i) => assert_eq!(*i, 1),
+                                        _ => panic!("Expected integer"),
+                                    }
+                                },
+                                _ => panic!("Expected Prefix expression"),
+                            }
+                        },
+                        _ => panic!("Unexcepted index {}", idx)
+                    }
+                },
+                _ => panic!("{}: Expected return statement but found {}", idx, stmt),
+            };
+            idx += 1;
+        }
+    }
 //
 //    const TEST_GROUPED_EXPRESSION_STR: &str = "
 //        let x = (x + y);
