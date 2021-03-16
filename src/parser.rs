@@ -526,37 +526,35 @@ mod tests {
             idx += 1;
         }
     }
-//
-//    const TEST_GROUPED_EXPRESSION_STR: &str = "
-//        let x = (x + y);
-//        let x = (x + y) + (l + k);
-//        let x = ((x * 2) + (3 * (2 + 3) + 2));
-//    ";
-//
-//    #[test]
-//    fn test_parser_grouped_expressions() {
-//        let statements = test_case_statements(TEST_GROUPED_EXPRESSION_STR);
-//        assert_eq!(statements.len(), 3);
-//
-//        let mut idx = 0;
-//        for stmt in statements.iter() {
-//            assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
-//
-//            let let_stmt: &LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
-//                Some(b) => b,
-//                None => panic!("Invalid type")
-//            };
-//
-//            match idx {
-//                0 => assert_eq!(format!("{}", let_stmt), "let x = (x + y);"),
-//                1 => assert_eq!(format!("{}", let_stmt), "let x = ((x + y) + (l + k));"),
-//                2 => assert_eq!(format!("{}", let_stmt), "let x = ((x * 2) + ((3 * (2 + 3)) + 2));"),
-//                _ => panic!("Unexcepted index {}", idx)
-//            }
-//
-//            idx += 1;
-//        }
-//    }
+
+    const TEST_GROUPED_EXPRESSION_STR: &str = "
+        let x = (x + y);
+        let x = (x + y) + (l + k);
+        let x = ((x * 2) + (3 * (2 + 3) + 2));
+    ";
+
+    #[test]
+    fn test_parser_grouped_expressions() {
+        let statements = test_case_statements(TEST_GROUPED_EXPRESSION_STR);
+        assert_eq!(statements.len(), 3);
+
+        let mut idx = 0;
+        for stmt in statements.iter() {
+            match stmt {
+                Statement::Let(s, expr) => {
+                    match idx {
+                        0 => assert_eq!(format!("{}", stmt), "let x = (x + y);"),
+                        1 => assert_eq!(format!("{}", stmt), "let x = ((x + y) + (l + k));"),
+                        2 => assert_eq!(format!("{}", stmt), "let x = ((x * 2) + ((3 * (2 + 3)) + 2));"),
+                        _ => panic!("Unexcepted index {}", idx)
+                    }
+                }
+                _ => panic!("Expected let statement found {}")
+            }
+
+            idx += 1;
+        }
+    }
 //
 //    const TEST_IF_NO_ELSE_STR: &str = "
 //        if (x > y) {
