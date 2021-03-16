@@ -234,7 +234,7 @@ impl Parser {
             Token::LParen => self.parse_group_expression(),
             Token::If => self.parse_if_expression(),
             Token::Function => self.parse_function(),
-            _ => panic!("Invalid token in expression {}", t)
+            _ => panic!("Invalid token in expression {}, next token {}", t, self.next_token.clone())
         };
 
         // Infix
@@ -274,12 +274,6 @@ impl Parser {
         let mut parameters: Vec<Expression> = vec![];
         self.expect_current_token(Token::LParen);
 
-        if self.peek() == Token::RParen {
-            self.next();
-            self.next();
-            return parameters;
-        }
-
         while self.curr_token != Token::RParen {
             let expr = self.parse_expression(Precedence::Lowest);
             parameters.push(*expr);
@@ -304,9 +298,7 @@ impl Parser {
 
         self.expect_current_token(Token::LParen);
 
-        if self.peek() == Token::RParen {
-            self.next();
-            self.next();
+        if self.curr_token == Token::RParen {
             return parameters;
         }
 
@@ -618,13 +610,20 @@ mod tests {
         fn(x,y,z) {
             let z = x + y;
             z
-        }
+        };
+        let fact = fn(x){
+                        if (x > 1){
+                            return x;
+                        } else {
+                            return 1;
+                        }
+                    };
     ";
 
     #[test]
     fn test_parser_function() {
         let statements = test_case_statements(TEST_FUNCTION_STR1);
-        assert_eq!(statements.len(), 1);
+        assert_eq!(statements.len(), 2);
         let mut stmt = &statements[0];
         match stmt {
             Statement::Expression(expr) => {
