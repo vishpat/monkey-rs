@@ -612,11 +612,11 @@ mod tests {
             z
         };
         let fact = fn(x){
-                        if (x > 1){
+                        if (x > 1) {
                             return x;
                         } else {
                             return 1;
-                        }
+                        };
                     };
     ";
 
