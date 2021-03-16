@@ -412,6 +412,7 @@ mod tests {
 
     const TEST_LET_STATEMENTS_STR: &str = "
         let five = 5;
+        let is_true = true;
         let t = ten;
         let twenty = 20 + 20;
         let zero = 30 - 30;
@@ -422,17 +423,30 @@ mod tests {
     fn test_parser_let_statements() {
         let statements = test_case_statements(TEST_LET_STATEMENTS_STR);
 
-        assert_eq!(statements.len(), 5);
+        assert_eq!(statements.len(), 6);
         let mut idx = 0;
         for stmt in statements.iter() {
             let let_stmt = match stmt {
                 Statement::Let(s, expr) => {
                     match idx {
-                        0 => assert_eq!(stmt.to_string(), "let five = 5;"),
-                        1 => assert_eq!(stmt.to_string(), "let t = ten;"),
-                        2 => assert_eq!(stmt.to_string(), "let twenty = (20 + 20);"),
-                        3 => assert_eq!(stmt.to_string(), "let zero = (30 - 30);"),
-                        4 => assert_eq!(stmt.to_string(), "let complex = ((11 - 22) + (11 * 22));"),
+                        0 => {
+                            assert_eq!(stmt.to_string(), "let five = 5;");
+                            match **expr {
+                                Expression::IntegerLiteral(i) => assert_eq!(i, 5),
+                                _ => panic!("Expected integer value of 5"),
+                            }
+                        },
+                        1 => {
+                            assert_eq!(stmt.to_string(), "let is_true = true;");
+                            match **expr {
+                                Expression::Boolean(b) => assert_eq!(b, true),
+                                _ => panic!("Expected a true boolean value"),
+                            }
+                        },
+                        2 => assert_eq!(stmt.to_string(), "let t = ten;"),
+                        3 => assert_eq!(stmt.to_string(), "let twenty = (20 + 20);"),
+                        4 => assert_eq!(stmt.to_string(), "let zero = (30 - 30);"),
+                        5 => assert_eq!(stmt.to_string(), "let complex = ((11 - 22) + (11 * 22));"),
                         _ => panic!("Unexcepted index {}", idx)
                     }
                 },
