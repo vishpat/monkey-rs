@@ -144,7 +144,8 @@ mod tests {
     #[test]
     fn test_eval_return() {
         let test_cases = vec![
-            TestCase { test_str: "return 0;", val: Object::Integer(0) }
+            TestCase { test_str: "return 0;", val: Object::Integer(0) },
+            TestCase { test_str: "return;", val: Object::Nil},
         ];
 
         check_test_cases(test_cases);
@@ -154,6 +155,7 @@ mod tests {
     fn test_eval_prefix() {
         let test_cases = vec![
             TestCase { test_str: "!true", val: Object::Boolean(false) },
+            TestCase { test_str: "!false", val: Object::Boolean(true) },
             TestCase { test_str: "-1", val: Object::Integer(-1) }
         ];
 
