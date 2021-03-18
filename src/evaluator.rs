@@ -61,6 +61,40 @@ pub fn eval_infix_expression(infix: &Infix, left: &Expression, right: &Expressio
     }
 }
 
+pub fn eval_block_statement(block: &BlockStatement) -> Object {
+    let mut val = Object::Nil;
+    for stmt in &block.stmts {
+        val = match stmt {
+            Statement::Let(x, expr) => eval_let_statement(x.to_string(), &*expr),
+            Statement::Return(Some(x)) => {
+                return eval_return_statement(&*x);
+            }
+            Statement::Return(None) => {
+                return Object::Nil;
+            }
+            Statement::Expression(expr) => eval_expression(&*expr),
+        }
+    }
+    val
+}
+
+pub fn eval_if_expression(expr: &Expression, true_block: &BlockStatement, false_block: &Option<Box<BlockStatement>>) -> Object {
+    let expr_obj = eval_expression(expr);
+    let expr_val = match expr_obj {
+        Object::Boolean(v) => v,
+        _ => panic!("Expected boolean expression in if statement, found {}", expr_obj)
+    };
+
+    if expr_val {
+        eval_block_statement(true_block)
+    } else if false_block.is_some() {
+        eval_block_statement(false_block.as_ref().unwrap().as_ref())
+    } else {
+        Object::Nil
+    }
+}
+
+
 pub fn eval_expression(expr: &Expression) -> Object {
     match expr {
         Expression::IntegerLiteral(i) => Object::Integer(*i),
@@ -70,6 +104,8 @@ pub fn eval_expression(expr: &Expression) -> Object {
             eval_prefix_expression(prefix, expr),
         Expression::Infix(infix, left, right) =>
             eval_infix_expression(infix, left, right),
+        Expression::If(expr, true_block, false_block) =>
+            eval_if_expression(expr, true_block, false_block),
         Expression::FunctionLiteral(params, block) =>
             Object::FunctionLiteral(params.clone(), *block.clone()),
         _ => Object::Nil
@@ -145,7 +181,7 @@ mod tests {
     fn test_eval_return() {
         let test_cases = vec![
             TestCase { test_str: "return 0;", val: Object::Integer(0) },
-            TestCase { test_str: "return;", val: Object::Nil},
+            TestCase { test_str: "return;", val: Object::Nil },
         ];
 
         check_test_cases(test_cases);
@@ -167,14 +203,28 @@ mod tests {
         let test_cases = vec![
             TestCase { test_str: "10 > 20", val: Object::Boolean(false) },
             TestCase { test_str: "-1 + 0", val: Object::Integer(-1) },
-            TestCase { test_str: "5 > 3", val: Object::Boolean(true)},
-            TestCase {test_str: "4 < 2", val: Object::Boolean(false)},
-            TestCase {test_str: "5 == 3", val: Object::Boolean(false)},
-            TestCase {test_str: "4 != 2", val: Object::Boolean(true)},
-            TestCase {test_str: "(2*2 + 1) == 5", val: Object::Boolean(true)},
-            TestCase {test_str: "(2 + 3)*2 == 10", val: Object::Boolean(true)},
+            TestCase { test_str: "5 > 3", val: Object::Boolean(true) },
+            TestCase { test_str: "4 < 2", val: Object::Boolean(false) },
+            TestCase { test_str: "5 == 3", val: Object::Boolean(false) },
+            TestCase { test_str: "4 != 2", val: Object::Boolean(true) },
+            TestCase { test_str: "(2*2 + 1) == 5", val: Object::Boolean(true) },
+            TestCase { test_str: "(2 + 3)*2 == 10", val: Object::Boolean(true) },
         ];
 
         check_test_cases(test_cases);
     }
+
+    #[test]
+    fn test_eval_if_expr() {
+        let test_cases = vec![
+            TestCase { test_str: "if (10 > 20) {20} else {10}", val: Object::Integer(10) },
+            TestCase { test_str: "if (21 > 20) {20} else {10}", val: Object::Integer(20) },
+            TestCase { test_str: "if (21 > 20) {20} ", val: Object::Integer(20) },
+            TestCase { test_str: "if (21 < 20) {20} ", val: Object::Nil },
+            TestCase { test_str: "if (21 > 20) {let x = 30; 20} ", val: Object::Integer(20) },
+        ];
+
+        check_test_cases(test_cases);
+    }
+
 }
