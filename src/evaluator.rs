@@ -113,33 +113,33 @@ pub fn eval_function_call(func_expr: &Box<Expression>, parameters: &Vec<Expressi
                           env: &mut Rc<RefCell<Environment>>) -> Object {
     let mut func_params;
     let mut func_block;
-    let mut func_env;
 
     let func_obj = eval_expression(func_expr, env);
+
     match func_obj {
-        Object::FunctionLiteral(params, block, env) =>
+        Object::FunctionLiteral(params, block, _) =>
             {
                 func_params = params;
                 func_block = block;
-                func_env = env.clone();
             },
         _ => panic!("Invalid object type {}, expected function object", func_obj)
     };
+
 
     let param_objs = eval_function_parameters(parameters, env);
     if param_objs.len() != func_params.len() {
         panic!("Did not find the expected number of arguments for the function");
     }
 
-    let mut func_env_extended = Environment::extend(func_env);
+    let mut func_env = Rc::new(RefCell::new(Environment::new()));
 
     let mut idx = 0;
     while idx < param_objs.len() {
-        func_env_extended.set(&*func_params[idx], param_objs[idx].clone());
+        func_env.borrow_mut().set(&*func_params[idx], param_objs[idx].clone());
+        idx += 1;
     }
 
-    let mut func_env2 = Rc::new(RefCell::new(func_env_extended));
-    eval_block_statement(&func_block, &mut func_env2)
+    eval_block_statement(&func_block, &mut func_env)
 }
 
 pub fn eval_expression(expr: &Expression, env: &mut Rc<RefCell<Environment>>) -> Object {
@@ -291,4 +291,13 @@ mod tests {
         check_test_cases(test_cases);
     }
 
+    #[test]
+    fn test_eval_functions() {
+        let test_cases = vec![
+            TestCase { test_str: "let sum = fn(x, y){ x + y;}; sum(10, 20);", val: Object::Integer(30) },
+
+        ];
+
+        check_test_cases(test_cases);
+    }
 }
