@@ -184,10 +184,12 @@ impl Parser {
         self.expect_current_token(Token::If);
         let condition = self.parse_group_expression();
         let true_block = self.parse_block_statement();
+        self.next();
 
         let mut false_block: Option<Box<BlockStatement>> = None;
         if self.curr_token == Token::Else {
             false_block = Some(self.parse_block_statement());
+            self.next();
         }
 
        Box::new(Expression::If(condition, true_block, false_block))
@@ -204,8 +206,6 @@ impl Parser {
             statements.push(*statement);
             self.next();
         }
-
-        self.expect_current_token(Token::RBrace);
 
         Box::new(BlockStatement{stmts: statements})
     }
@@ -665,11 +665,30 @@ mod tests {
         }
     }
 
+    const TEST_FUNCTION_STR3: &str = "
+        fn(x, y) {
+            x*y;
+        }(10, 20);
+    ";
+
+    #[test]
+    fn test_parser_function_expression() {
+        let statements = test_case_statements(TEST_FUNCTION_STR3);
+        assert_eq!(statements.len(), 1);
+        let mut stmt = &statements[0];
+        match stmt {
+            Statement::Expression(expr) => {
+                println!("{}", expr);
+            }
+            _ => panic!("Unexpected expression found")
+        }
+    }
+
     const TEST_FUNCTION_CALL_STR: &str = "
         sum();
         sum3(x, y, z);
         sum_expr(x, y + w, z);
-        fn(x, y){x + y;};(2, 3);
+        fn(x, y){x + y;}(2, 3);
     ";
 
     #[test]

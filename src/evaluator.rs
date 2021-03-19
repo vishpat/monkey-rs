@@ -334,6 +334,8 @@ mod tests {
                                   let sqr = fn(x){let z = sum(x, x); z*z;};\
                                   let z = sum(2, 3) + sqr(2);\
                                   z;", val: Object::Integer(21)},
+
+            TestCase{test_str: "fn(x, y, z){x + y + z}(1, 2, 3);", val: Object::Integer(6)},
         ];
 
         check_test_cases(test_cases);
