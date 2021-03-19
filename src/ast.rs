@@ -1,519 +1,129 @@
 use crate::lexer::Token;
-use std::ptr::write_bytes;
-use std::any::Any;
+use std::fmt;
+use std::fmt::Formatter;
 
-#[derive(Debug, PartialEq)]
-pub enum AstNode {
-    LetStatement,
-    ReturnStatement,
-    ExpressionStatement,
-    BlockStatement,
-
-    IdentifierExpression,
-    BooleanExpression,
-    IntegerExpression,
-    PrefixExpression,
-    InfixExpression,
-    IfExpression,
-    FunctionLiteralExpression,
-    CallExpression,
-
-    Program,
-}
-
-pub trait Node: std::fmt::Debug {
-    fn ast_node_type(&self) -> AstNode;
-
-    // Required to downcast a Trait to specify structure
-    fn as_any(&self) -> &dyn Any;
-}
-
-pub trait Statement: Node + std::fmt::Display {
-    fn node(&self) -> &dyn Node;
-}
-
-pub trait Expression: Node + std::fmt::Display {
-    fn node(&self) -> &dyn Node;
-}
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Program {
-    pub(crate) statements: Vec<Box<dyn Statement>>
+    pub stmts: Vec<Statement>,
 }
 
-impl Node for Program {
-    fn ast_node_type(&self) -> AstNode {
-        AstNode::Program
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-// Statements
-
-// Let
-#[derive(Debug)]
-pub struct LetStatement {
-    pub id: Box<Identifier>,
-    pub expr: Box<dyn Expression>,
-}
-
-impl LetStatement {
-    pub fn new(id: Box<Identifier>, expr: Box<dyn Expression>) -> Box<LetStatement> {
-        Box::new(LetStatement { id, expr })
+impl fmt::Display for Program {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for stmt in &self.stmts {
+            write!(f, "{}", stmt)?;
+        }
+        Ok(())
     }
 }
 
-impl std::fmt::Display for LetStatement {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(fmt, "let {} = {};", self.id, self.expr)
-    }
-}
-
-impl Statement for LetStatement {
-    fn node(&self) -> &dyn Node {
-        self
-    }
-}
-
-impl Node for LetStatement {
-    fn ast_node_type(&self) -> AstNode {
-        AstNode::LetStatement
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-// Return
-#[derive(Debug)]
-pub struct ReturnStatement {
-    pub expr: Box<dyn Expression>
-}
-
-impl ReturnStatement {
-    pub fn new(expr: Box<dyn Expression>) -> Box<ReturnStatement> {
-        Box::new(ReturnStatement { expr })
-    }
-}
-
-impl std::fmt::Display for ReturnStatement {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        write!(fmt, "return {};", self.expr)
-    }
-}
-
-impl Statement for ReturnStatement {
-    fn node(&self) -> &dyn Node {
-       self
-    }
-}
-
-impl Node for ReturnStatement {
-    fn ast_node_type(&self) -> AstNode {
-        AstNode::ReturnStatement
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-// Expression
-#[derive(Debug)]
-pub struct ExpressionStatement {
-    pub expr: Box<dyn Expression>
-}
-
-impl ExpressionStatement {
-    pub fn new(expr: Box<dyn Expression>) -> Box<ExpressionStatement> {
-        Box::new(ExpressionStatement{expr: expr})
-    }
-}
-
-impl std::fmt::Display for ExpressionStatement {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(fmt, "{};", self.expr)
-    }
-}
-
-impl Statement for ExpressionStatement {
-    fn node(&self) -> &dyn Node {
-        self
-    }
-}
-
-impl Node for ExpressionStatement {
-    fn ast_node_type(&self) -> AstNode {
-        AstNode::ExpressionStatement
-    }
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-
-// Block
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct BlockStatement {
-    pub block: Box<Vec<Box<dyn Statement>>>
+    pub stmts: Vec<Statement>,
 }
 
-impl BlockStatement {
-    pub fn new(statements: Box<Vec<Box<dyn Statement>>>) -> Box<BlockStatement> {
-        Box::new(BlockStatement{block: statements})
-    }
-}
-
-impl std::fmt::Display for BlockStatement {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        write!(fmt, "{{");
-        for x in self.block.iter() {
-            write!(fmt, "{{\n\t {} \n\t}}", x);
+impl fmt::Display for BlockStatement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{{");
+        for stmt in &self.stmts {
+            write!(f, "{}", stmt)?;
         }
-        write!(fmt, "}}")
-    }
-}
-
-impl Statement for BlockStatement {
-    fn node(&self) -> &dyn Node {
-        self
-    }
-}
-
-impl Node for BlockStatement {
-    fn ast_node_type(&self) -> AstNode {
-        AstNode::BlockStatement
-    }
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-// Expressions
-
-// Ident
-#[derive(Debug)]
-pub struct Identifier {
-    pub value: Box<String>
-}
-
-impl Identifier {
-    pub fn new(str: Box<String>) -> Box<Identifier> {
-        Box::new(Identifier { value: str })
-    }
-}
-
-impl std::fmt::Display for Identifier {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.value)
+        write!(f, "}}");
+        Ok(())
     }
 }
 
 
-impl Expression for Identifier {
-    fn node(&self) -> &dyn Node {
-        self
-    }
+#[derive(Debug, PartialEq, Clone)]
+pub enum Prefix {
+    Minus,
+    Bang
 }
 
-impl Node for Identifier {
-    fn ast_node_type(&self) -> AstNode {
-        AstNode::IdentifierExpression
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-// Bool
-#[derive(Debug)]
-pub struct Boolean {
-    pub value: bool
-}
-
-impl Boolean {
-    pub fn new(val: bool) -> Box<Boolean> {
-        Box::new(Boolean { value: val })
-    }
-}
-
-impl std::fmt::Display for Boolean {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.value)
-    }
-}
-
-impl Expression for Boolean {
-    fn node(&self) -> &dyn Node {
-        self
-    }
-}
-
-impl Node for Boolean {
-    fn ast_node_type(&self) -> AstNode {
-        AstNode::BooleanExpression
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-// Int
-#[derive(Debug)]
-pub struct Integer {
-    pub value: i64
-}
-
-impl Integer {
-    pub fn new(val: i64) -> Box<Integer> {
-        Box::new(Integer { value: val })
-    }
-}
-
-impl std::fmt::Display for Integer {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.value)
-    }
-}
-
-impl Expression for Integer {
-    fn node(&self) -> &dyn Node {
-        self
-    }
-}
-
-impl Node for Integer {
-    fn ast_node_type(&self) -> AstNode {
-        AstNode::IntegerExpression
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-// Prefix Expression
-#[derive(Debug)]
-pub struct PrefixExpression
-{
-    pub op: Box<Token>,
-    pub expr: Box<dyn Expression>,
-}
-
-impl PrefixExpression {
-    pub fn new(op: Box<Token>, expr: Box<dyn Expression>) -> Box<PrefixExpression> {
-        Box::new(PrefixExpression { op, expr })
-    }
-}
-
-impl std::fmt::Display for PrefixExpression {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(fmt, "{}{}", self.op, self.expr)
-    }
-}
-
-impl Expression for PrefixExpression {
-    fn node(&self) -> &dyn Node {
-        self
-    }
-}
-
-impl Node for PrefixExpression {
-    fn ast_node_type(&self) -> AstNode {
-        AstNode::PrefixExpression
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-// Infix Expression
-#[derive(Debug)]
-pub struct InfixExpression
-{
-    pub left: Box<dyn Expression>,
-    pub op: Box<Token>,
-    pub right: Box<dyn Expression>,
-}
-
-impl InfixExpression {
-    pub fn new(left: Box<dyn Expression>, op: Box<Token>, right: Box<dyn Expression>) -> Box<InfixExpression> {
-        Box::new(InfixExpression { left, op, right })
-    }
-}
-
-impl std::fmt::Display for InfixExpression {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        write!(fmt, "({} {} {})", self.left, self.op, self.right)
-    }
-}
-
-impl Expression for InfixExpression {
-    fn node(&self) -> &dyn Node {
-        self
-    }
-}
-
-impl Node for InfixExpression {
-    fn ast_node_type(&self) -> AstNode {
-        AstNode::InfixExpression
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-// If Expression
-#[derive(Debug)]
-pub struct IfExpression {
-    pub cond: Box<dyn Expression>,
-    pub true_block: Box<BlockStatement>,
-    pub false_block: Option<Box<BlockStatement>>,
-}
-
-impl IfExpression {
-    pub fn new(cond: Box<dyn Expression>, true_block: Box<BlockStatement>,
-               false_block: Option<Box<BlockStatement>>) -> Box<IfExpression> {
-        Box::new(IfExpression { cond, true_block, false_block })
-    }
-}
-
-impl std::fmt::Display for IfExpression {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        if self.false_block.is_some() {
-            write!(fmt, "if {} {} else {}", self.cond, self.true_block,
-                   self.false_block.as_ref().unwrap())
-        } else {
-            write!(fmt, "if {} {}", self.cond, self.true_block)
+impl fmt::Display for Prefix {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Prefix::Minus => write!(f, "-"),
+            Prefix::Bang => write!(f, "!"),
         }
     }
 }
 
-impl Expression for IfExpression {
-    fn node(&self) -> &dyn Node {
-        self
-    }
+#[derive(Debug, PartialEq, Clone)]
+pub enum Infix {
+    Eq,
+    NotEq,
+    Lt,
+    Gt,
+    Plus,
+    Minus,
+    Asterisk,
+    Slash,
 }
 
-impl Node for IfExpression {
-    fn ast_node_type(&self) -> AstNode {
-        AstNode::IfExpression
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-
-// Function
-#[derive(Debug)]
-pub struct FunctionLiteral {
-    pub parameters: Box<Vec<Box<Identifier>>>,
-    pub block: Box<BlockStatement>,
-}
-
-impl FunctionLiteral {
-    pub fn new(parameters: Box<Vec<Box<Identifier>>>, block: Box<BlockStatement>) -> Box<FunctionLiteral> {
-        Box::new(FunctionLiteral{parameters, block})
-    }
-}
-
-impl std::fmt::Display for FunctionLiteral {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        write!(fmt, "fn {:?} {}", self.parameters, self.block)
-    }
-}
-
-impl Expression for FunctionLiteral {
-    fn node(&self) -> &dyn Node {
-        self
-    }
-}
-
-impl Node for FunctionLiteral {
-    fn ast_node_type(&self) -> AstNode {
-        AstNode::FunctionLiteralExpression
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-// Call Expression
-#[derive(Debug)]
-pub struct CallExpression {
-    pub function: Box<dyn Expression>,
-    pub parameters: Box<Vec<Box<dyn Expression>>>,
-}
-
-impl CallExpression {
-    pub fn new(function: Box<dyn Expression>, parameters: Box<Vec<Box<dyn Expression>>>) -> Box<CallExpression> {
-        Box::new(CallExpression{function, parameters})
-    }
-}
-
-impl std::fmt::Display for CallExpression {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(fmt, "{}()", self.function);
-        for x in self.parameters.iter() {
-            write!(fmt, "{}", x);
+impl fmt::Display for Infix {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Infix::Eq => write!(f, "=="),
+            Infix::NotEq => write!(f, "!="),
+            Infix::Lt => write!(f, "<"),
+            Infix::Gt => write!(f, ">"),
+            Infix::Plus => write!(f, "+"),
+            Infix::Minus => write!(f, "-"),
+            Infix::Asterisk => write!(f, "*"),
+            Infix::Slash => write!(f, "/"),
         }
-        write!(fmt, "")
     }
 }
 
-impl Expression for CallExpression {
-    fn node(&self) -> &dyn Node {
-        self
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Expression {
+    Identifier(String),
+    IntegerLiteral(i64),
+    Boolean(bool),
+    Prefix(Prefix, Box<Expression>),
+    Infix(Infix, Box<Expression>, Box<Expression>),
+    If(Box<Expression>, Box<BlockStatement>, Option<Box<BlockStatement>>),
+    FunctionLiteral(Vec<String>, Box<BlockStatement>),
+    Call(Box<Expression>, Vec<Expression>),
+}
+
+impl fmt::Display for Expression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Expression::Identifier(s) => write!(f, "{}", s),
+            Expression::IntegerLiteral(i) => write!(f, "{}", i),
+            Expression::Boolean(b) => write!(f, "{}", b),
+            Expression::Prefix(p, exp) => write!(f, "({}{})", p, exp),
+            Expression::Infix(op, left, right) =>
+                write!(f, "({} {} {})", left, op, right),
+            Expression::If(exp, true_blk, Some(false_blk)) =>
+                write!(f,"if ({}) {} else {}", exp, true_blk, false_blk),
+            Expression::If(exp, true_blk, None) =>
+                write!(f,"if ({}) {}", exp, true_blk),
+            Expression::FunctionLiteral(params, block) => write!(f, "fn({}){}", params.join(","), block),
+            Expression::Call(exp, params) => write!(f, "{}({})", exp,
+                                                    params.iter().map(|a| a.to_string()).collect::<Vec<String>>().join(",")),
+        }
     }
 }
 
-impl Node for CallExpression {
-    fn ast_node_type(&self) -> AstNode {
-        AstNode::CallExpression
-    }
 
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Statement {
+    Let(String, Box<Expression>),
+    Return(Option<Box<Expression>>),
+            Expression(Box<Expression>),
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::ast::{Identifier, InfixExpression, LetStatement, Node, AstNode};
-    use crate::lexer::Token;
-
-    #[test]
-    fn test_infix_expression() {
-        let x =
-            Box::new(Identifier { value: Box::new(String::from("x")) });
-        assert_eq!(x.ast_node_type(), AstNode::IdentifierExpression);
-
-        let y =
-            Box::new(Identifier { value: Box::new(String::from("y")) });
-        assert_eq!(y.ast_node_type(), AstNode::IdentifierExpression);
-
-        let z =
-            Box::new(Identifier { value: Box::new(String::from("z")) });
-        assert_eq!(z.ast_node_type(), AstNode::IdentifierExpression);
-
-        let infix_expr = Box::new(InfixExpression { left: x, op: Box::new(Token::Plus), right: y });
-        assert_eq!(infix_expr.ast_node_type(), AstNode::InfixExpression);
-
-        let let_expr = Box::new(LetStatement { id: z, expr: infix_expr });
-        assert_eq!(let_expr.ast_node_type(), AstNode::LetStatement);
-
-        let let_expr_str = format!("{}", let_expr);
-        assert_eq!("let z = (x + y);", let_expr_str);
+impl fmt::Display for Statement {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Statement::Let(s, exp) => write!(f, "let {} = {};", s, exp),
+            Statement::Return(None) => write!(f, "return;"),
+            Statement::Return(Some(val)) => write!(f, "return {};", val),
+            Statement::Expression(exp) => write!(f, "{};", exp),
+        }
     }
 }

@@ -3,8 +3,6 @@ use crate::ast::*;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Display};
-use std::collections::HashMap;
-use crate::ast::AstNode::IdentifierExpression;
 
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd)]
 pub enum Precedence {
@@ -94,11 +92,11 @@ impl Parser {
         }
     }
 
-    fn parse_let_statement(&mut self) -> Box<dyn Statement> {
+    fn parse_let_statement(&mut self) -> Box<Statement> {
         // Get identifier token
         let token = self.next();
         let identifer = match token {
-            Token::Ident(s) => Identifier::new(Box::new(s)),
+            Token::Ident(s) => Expression::Identifier(s),
             _ => panic!("Identifier token not found in let statement {}", token)
         };
 
@@ -108,65 +106,73 @@ impl Parser {
 
         // Parse expression
         let expr = self.parse_expression(Precedence::Lowest);
-        let let_stmt = LetStatement::new(identifer, expr);
+        let let_stmt = Statement::Let(identifer.to_string(), expr);
 
         if self.peek() == Token::Semicolon {
             self.next();
         }
 
-        let_stmt
+        Box::new(let_stmt)
     }
 
-    fn parse_return_statement(&mut self) -> Box<dyn Statement> {
+    fn parse_return_statement(&mut self) -> Box<Statement> {
         self.next();
+
+        if self.curr_token == Token::Semicolon {
+            return Box::new(Statement::Return(None))
+        }
+
         let expr = self.parse_expression(Precedence::Lowest);
 
         if self.peek() == Token::Semicolon {
             self.next();
         }
 
-        ReturnStatement::new(expr)
+        Box::new(Statement::Return(Some(expr)))
     }
 
-    fn parse_identifier(&mut self) -> Box<dyn Expression> {
+    fn parse_identifier(&mut self) -> Box<Expression> {
         let curr_token = &self.curr_token;
 
         match curr_token {
-            Token::Ident(s) => Identifier::new(Box::new(s.clone())),
+            Token::Ident(s) => Box::new(Expression::Identifier(s.to_string())),
             _ => panic!("Unable to parse identifier {}", self.curr_token)
         }
     }
 
-    fn parse_integer(&mut self) -> Box<dyn Expression> {
+    fn parse_integer(&mut self) -> Box<Expression> {
         let curr_token = &self.curr_token;
 
         match curr_token {
-            Token::Int(s) => Integer::new(*s),
+            Token::Int(s) => Box::new(Expression::IntegerLiteral(*s)),
             _ => panic!("Unable to parse integer {}", self.curr_token)
         }
     }
 
-    fn parse_boolean(&mut self) -> Box<dyn Expression> {
+    fn parse_boolean(&mut self) -> Box<Expression> {
         let curr_token = &self.curr_token;
 
         match curr_token {
-            Token::True => Boolean::new(true),
-            Token::False => Boolean::new(false),
+            Token::True => Box::new(Expression::Boolean(true)),
+            Token::False => Box::new(Expression::Boolean(false)),
             _ => panic!("Invalid boolean {}", curr_token)
         }
     }
 
-    fn parse_prefix_expression(&mut self) -> Box<dyn Expression> {
+    fn parse_prefix_expression(&mut self) -> Box<Expression> {
         let op = self.curr_token.clone();
 
-        assert_eq!(op == Token::Bang || op == Token::Minus, true);
+        let prefix = match op {
+            Token::Bang => Prefix::Bang,
+            Token::Minus => Prefix::Minus,
+            _ => panic!("Invalid token {} prefix expression", op)
+        };
 
         self.next();
-        PrefixExpression::new(Box::new(op),
-                              self.parse_expression(Precedence::Prefix))
+        Box::new(Expression::Prefix(prefix, self.parse_expression(Precedence::Prefix)))
     }
 
-    fn parse_group_expression(&mut self) -> Box<dyn Expression> {
+    fn parse_group_expression(&mut self) -> Box<Expression> {
         self.expect_current_token(Token::LParen);
         let expr = self.parse_expression(Precedence::Lowest);
         self.expect_next_token(Token::RParen);
@@ -174,7 +180,7 @@ impl Parser {
         expr
     }
 
-    fn parse_if_expression(&mut self) -> Box<dyn Expression> {
+    fn parse_if_expression(&mut self) -> Box<Expression> {
         self.expect_current_token(Token::If);
         let condition = self.parse_group_expression();
         let true_block = self.parse_block_statement();
@@ -184,43 +190,43 @@ impl Parser {
             false_block = Some(self.parse_block_statement());
         }
 
-        IfExpression::new(condition, true_block, false_block)
+       Box::new(Expression::If(condition, true_block, false_block))
     }
 
     fn parse_block_statement(&mut self) -> Box<BlockStatement> {
-        let mut statements: Vec<Box<dyn Statement>> = vec![];
+        let mut statements: Vec<Statement> = vec![];
 
         self.expect_next_token(Token::LBrace);
         self.next();
 
         while self.curr_token != Token::Eof && self.curr_token != Token::RBrace {
             let statement = self.parse_statement();
-            statements.push(statement);
+            statements.push(*statement);
             self.next();
         }
 
         self.expect_current_token(Token::RBrace);
 
-        BlockStatement::new(Box::new(statements))
+        Box::new(BlockStatement{stmts: statements})
     }
 
-    pub fn parse_expression_statement(&mut self) -> Box<dyn Statement> {
+    pub fn parse_expression_statement(&mut self) -> Box<Statement> {
         let expr = self.parse_expression(Precedence::Lowest);
         if self.peek() == Token::Semicolon {
             self.next();
         }
 
-        ExpressionStatement::new(expr)
+        Box::new(Statement::Expression(expr))
     }
 
     ///
     ///  This function has been implemented using the TDOP algorithm mentioned
     /// [here](https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing)
     ///
-    fn parse_expression(&mut self, precedence: Precedence) -> Box<dyn Expression> {
+    fn parse_expression(&mut self, precedence: Precedence) -> Box<Expression> {
         let mut t = self.curr_token.clone();
         // Prefix
-        let mut left: Box<dyn Expression> = match t {
+        let mut expr: Box<Expression> = match t {
             Token::Ident(s) => self.parse_identifier(),
             Token::Int(s) => self.parse_integer(),
             Token::True | Token::False => self.parse_boolean(),
@@ -228,53 +234,49 @@ impl Parser {
             Token::LParen => self.parse_group_expression(),
             Token::If => self.parse_if_expression(),
             Token::Function => self.parse_function(),
-            _ => panic!("Invalid token in expression {}", t)
+            _ => panic!("Invalid token in expression {}, next token {}", t, self.next_token.clone())
         };
-
-        // To support - Function literal definition and call
-        // fn(x, y){x + y;}(1, 2);
-        //
-        if left.node().ast_node_type() == AstNode::FunctionLiteralExpression &&
-            self.curr_token == Token::LParen {
-            while self.peek() != Token::Semicolon {
-                return self.parse_function_call(left)
-            }
-        }
 
         // Infix
         while self.peek() != Token::Semicolon && self.peek_precedence() > precedence {
             let token = self.next();
 
-            left = match token {
+            expr = match token {
                 Token::Plus | Token::Minus | Token::Slash | Token::Asterik |
                 Token::Eq | Token::NotEq | Token::Lt | Token::Gt => {
                     self.next();
-                    InfixExpression::new(left, Box::new(token.clone()),
-                                         self.parse_expression(self.precedence(&token)))
+                    let infix = match token {
+                        Token::Plus => Infix::Plus,
+                        Token::Minus => Infix::Minus,
+                        Token::Slash => Infix::Slash,
+                        Token::Asterik => Infix::Asterisk,
+                        Token::Eq => Infix::Eq,
+                        Token::NotEq => Infix::NotEq,
+                        Token::Lt => Infix::Lt,
+                        Token::Gt => Infix::Gt,
+                        _ => panic!("Invalid infix token {}", token),
+                    };
+
+                    Box::new(Expression::Infix(infix, expr,
+                                         self.parse_expression(self.precedence(&token))))
                 }
                 Token::LParen => {
-                    self.parse_function_call(left)
+                    self.parse_function_call(expr)
                 }
-                _ => left
+                _ => expr
             };
         }
 
-        left
+        expr
     }
 
-    pub fn parse_call_parameters(&mut self) -> Box<Vec<Box<dyn Expression>>> {
-        let mut parameters: Box<Vec<Box<dyn Expression>>> = Box::new(vec![]);
+    pub fn parse_call_parameters(&mut self) -> Vec<Expression> {
+        let mut parameters: Vec<Expression> = vec![];
         self.expect_current_token(Token::LParen);
-
-        if self.peek() == Token::RParen {
-            self.next();
-            self.next();
-            return parameters;
-        }
 
         while self.curr_token != Token::RParen {
             let expr = self.parse_expression(Precedence::Lowest);
-            parameters.push(expr);
+            parameters.push(*expr);
 
             if self.peek() == Token::Comma {
                 self.next();
@@ -286,19 +288,17 @@ impl Parser {
         parameters
     }
 
-    pub fn parse_function_call(&mut self, left: Box<dyn Expression>) -> Box<CallExpression> {
+    pub fn parse_function_call(&mut self, left: Box<Expression>) -> Box<Expression> {
         let parameters = self.parse_call_parameters();
-        CallExpression::new(left, parameters)
+        Box::new(Expression::Call(left, parameters))
     }
 
-    pub fn parse_function_parameters(&mut self) -> Box<Vec<Box<Identifier>>> {
-        let mut parameters: Box<Vec<Box<Identifier>>> = Box::new(vec![]);
+    pub fn parse_function_parameters(&mut self) -> Vec<String> {
+        let mut parameters: Vec<String> = vec![];
 
         self.expect_current_token(Token::LParen);
 
-        if self.peek() == Token::RParen {
-            self.next();
-            self.next();
+        if self.curr_token == Token::RParen {
             return parameters;
         }
 
@@ -306,7 +306,7 @@ impl Parser {
             let idf = &self.curr_token;
 
             let identifier = match idf {
-                Token::Ident(i) => Identifier::new(Box::new(i.to_string())),
+                Token::Ident(i) => i.to_string(),
                 _ => panic!("Unexpected function parameter {}", idf)
             };
             parameters.push(identifier);
@@ -321,16 +321,16 @@ impl Parser {
         parameters
     }
 
-    pub fn parse_function(&mut self) -> Box<FunctionLiteral> {
+    pub fn parse_function(&mut self) -> Box<Expression> {
         self.expect_current_token(Token::Function);
 
         let parameters = self.parse_function_parameters();
         let body = self.parse_block_statement();
 
-        FunctionLiteral::new(parameters, body)
+        Box::new(Expression::FunctionLiteral(parameters, body))
     }
 
-    pub fn parse_statement(&mut self) -> Box<dyn Statement> {
+    pub fn parse_statement(&mut self) -> Box<Statement> {
         let statement = match self.curr_token {
             Token::Let => self.parse_let_statement(),
             Token::Return => self.parse_return_statement(),
@@ -340,11 +340,11 @@ impl Parser {
     }
 
     pub fn parse_program(&mut self) -> Result<Box<Program>, ParseError> {
-        let mut program = Box::new(Program { statements: vec![] });
+        let mut program = Box::new(Program { stmts: vec![] });
 
         while self.curr_token != Token::Eof {
             let statement = self.parse_statement();
-            program.statements.push(statement);
+            program.stmts.push(*statement);
             self.next();
         }
 
@@ -354,10 +354,12 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Identifier, InfixExpression, LetStatement, AstNode, ReturnStatement, PrefixExpression, BlockStatement, ExpressionStatement, IfExpression, FunctionLiteral, Statement, CallExpression};
     use crate::lexer::{Lexer, Token};
     use crate::parser::Parser;
     use std::any::Any;
+    use crate::ast::{Statement, Prefix};
+    use crate::ast::Expression;
+    use std::process::id;
 
     const TEST_STR: &str = "
     let five = 5;
@@ -394,18 +396,19 @@ mod tests {
         }
     }
 
-    fn test_case_statements(input: &str) -> Vec<Box<dyn Statement>> {
+    fn test_case_statements(input: &str) -> Vec<Statement> {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program().unwrap();
-        program.statements
+        program.stmts
     }
 
     const TEST_LET_STATEMENTS_STR: &str = "
         let five = 5;
-        let ten = 10;
+        let is_true = true;
+        let t = ten;
         let twenty = 20 + 20;
-        let zero = 30 - 40;
+        let zero = 30 - 30;
         let complex = 11 - 22 + 11 * 22;
     ";
 
@@ -413,30 +416,42 @@ mod tests {
     fn test_parser_let_statements() {
         let statements = test_case_statements(TEST_LET_STATEMENTS_STR);
 
-        assert_eq!(statements.len(), 5);
+        assert_eq!(statements.len(), 6);
         let mut idx = 0;
         for stmt in statements.iter() {
-            assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
-
-            let let_stmt: &LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
-                Some(b) => b,
-                None => panic!("Invalid type")
+            let let_stmt = match stmt {
+                Statement::Let(s, expr) => {
+                    match idx {
+                        0 => {
+                            assert_eq!(stmt.to_string(), "let five = 5;");
+                            match **expr {
+                                Expression::IntegerLiteral(i) => assert_eq!(i, 5),
+                                _ => panic!("Expected integer value of 5"),
+                            }
+                        },
+                        1 => {
+                            assert_eq!(stmt.to_string(), "let is_true = true;");
+                            match **expr {
+                                Expression::Boolean(b) => assert_eq!(b, true),
+                                _ => panic!("Expected a true boolean value"),
+                            }
+                        },
+                        2 => assert_eq!(stmt.to_string(), "let t = ten;"),
+                        3 => assert_eq!(stmt.to_string(), "let twenty = (20 + 20);"),
+                        4 => assert_eq!(stmt.to_string(), "let zero = (30 - 30);"),
+                        5 => assert_eq!(stmt.to_string(), "let complex = ((11 - 22) + (11 * 22));"),
+                        _ => panic!("Unexcepted index {}", idx)
+                    }
+                },
+                _ => panic!("Expected let statement but found {}", stmt),
             };
-
-            match idx {
-                0 => assert_eq!(format!("{}", let_stmt), "let five = 5;"),
-                1 => assert_eq!(format!("{}", let_stmt), "let ten = 10;"),
-                2 => assert_eq!(format!("{}", let_stmt), "let twenty = (20 + 20);"),
-                3 => assert_eq!(format!("{}", let_stmt), "let zero = (30 - 40);"),
-                4 => assert_eq!(format!("{}", let_stmt), "let complex = ((11 - 22) + (11 * 22));"),
-                _ => panic!("Unexcepted index {}", idx)
-            }
 
             idx += 1;
         }
     }
 
     const TEST_RETURN_STATEMENTS_STR: &str = "
+        return;
         return 5;
         return 10 + 4 * 5;
     ";
@@ -444,103 +459,34 @@ mod tests {
     #[test]
     fn test_parser_return_statements() {
         let statements = test_case_statements(TEST_RETURN_STATEMENTS_STR);
-        assert_eq!(statements.len(), 2);
+        assert_eq!(statements.len(), 3);
 
         let mut idx = 0;
         for stmt in statements.iter() {
-            assert_eq!(AstNode::ReturnStatement, stmt.ast_node_type());
-
-            let ret_stmt: &ReturnStatement = match stmt.as_any().downcast_ref::<ReturnStatement>() {
-                Some(b) => b,
-                None => panic!("Invalid type")
+            let ret_stmt = match stmt {
+                Statement::Return(expr) => {
+                    match idx {
+                        0 => {
+                            assert_eq!(expr.is_none(), true);
+                            assert_eq!(stmt.to_string(), "return;")
+                        },
+                        1 => assert_eq!(stmt.to_string(), "return 5;"),
+                        2 => assert_eq!(stmt.to_string(), "return (10 + (4 * 5));"),
+                       _ => panic!("Unexcepted index {}", idx)
+                    }
+                },
+                _ => panic!("{}: Expected return statement but found {}", idx, stmt),
             };
-
-            match idx {
-                0 => assert_eq!(format!("{}", ret_stmt), "return 5;"),
-                1 => assert_eq!(format!("{}", ret_stmt), "return (10 + (4 * 5));"),
-                _ => panic!("Unexcepted index {}", idx)
-            }
 
             idx += 1;
         }
+
     }
 
-
-    const TEST_INTEGERS_STR: &str = "
-        let x = 5;
-        let y = 10;
-    ";
-
-    #[test]
-    fn test_parser_integer_expressions() {
-        let statements = test_case_statements(TEST_INTEGERS_STR);
-
-        assert_eq!(statements.len(), 2);
-        let mut idx = 0;
-        for stmt in statements.iter() {
-            assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
-
-            let let_stmt: &LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
-                Some(b) => {
-                    assert_eq!(b.expr.ast_node_type(), AstNode::IntegerExpression);
-                    b
-                }
-                None => panic!("Invalid type")
-            };
-
-            match idx {
-                0 => {
-                    assert_eq!(format!("{}", let_stmt.expr), "5")
-                }
-                1 => {
-                    assert_eq!(format!("{}", let_stmt.expr), "10")
-                }
-                _ => panic!("Unexcepted index {}", idx)
-            }
-
-            idx += 1;
-        }
-    }
-
-    const TEST_BOOLEAN_STR: &str = "
-        let x = true;
-        let y = false;
-    ";
-
-    #[test]
-    fn test_parser_boolean_expressions() {
-        let statements = test_case_statements(TEST_BOOLEAN_STR);
-
-        assert_eq!(statements.len(), 2);
-        let mut idx = 0;
-        for stmt in statements.iter() {
-            assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
-
-            let let_stmt: &LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
-                Some(b) => {
-                    assert_eq!(b.expr.ast_node_type(), AstNode::BooleanExpression);
-                    b
-                }
-                None => panic!("Invalid type, expected let statement")
-            };
-
-            match idx {
-                0 => {
-                    assert_eq!(format!("{}", let_stmt.expr), "true")
-                }
-                1 => {
-                    assert_eq!(format!("{}", let_stmt.expr), "false")
-                }
-                _ => panic!("Unexcepted index {}", idx)
-            }
-
-            idx += 1;
-        }
-    }
 
     const TEST_PREFIX_STR: &str = "
-        let x = !y;
-        let x = -1;
+        !y;
+        -1;
     ";
 
     #[test]
@@ -550,35 +496,25 @@ mod tests {
 
         let mut idx = 0;
         for stmt in statements.iter() {
-            assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
-
-            let let_stmt: &LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
-                Some(b) => {
-                    assert_eq!(b.expr.ast_node_type(), AstNode::PrefixExpression);
-                    b
-                }
-                None => panic!("Invalid type")
+            let prefix_expr= match stmt {
+                Statement::Expression(expr) => {
+                    match &**expr {
+                       Expression::Prefix(prefix, expr2) => match idx {
+                            0 => {
+                                assert_eq!(*prefix, Prefix::Bang);
+                                assert_eq!(expr2.to_string(), "y");
+                            },
+                            1 => {
+                                assert_eq!(*prefix, Prefix::Minus);
+                                assert_eq!(expr2.to_string(), "1");
+                            },
+                            _ => panic!("Unexpected expression index {}", idx)
+                        },
+                        _ => panic!("Expected prefix expression"),
+                    }
+                },
+                _ => panic!("Expected statement with prefix expression but found {}", stmt),
             };
-
-            let prefix_expr: &PrefixExpression = match let_stmt.expr.as_any().downcast_ref::<PrefixExpression>() {
-                Some(px) => {
-                    px
-                }
-                None => panic!("Invalid type, expected prefix expression")
-            };
-
-            match idx {
-                0 => {
-                    assert_eq!(format!("{}", prefix_expr.op), "!");
-                    assert_eq!(format!("{}", prefix_expr.expr), "y");
-                }
-                1 => {
-                    assert_eq!(format!("{}", prefix_expr.op), "-");
-                    assert_eq!(format!("{}", prefix_expr.expr), "1");
-                }
-                _ => panic!("Unexcepted index {}", idx)
-            }
-
             idx += 1;
         }
     }
@@ -596,18 +532,16 @@ mod tests {
 
         let mut idx = 0;
         for stmt in statements.iter() {
-            assert_eq!(AstNode::LetStatement, stmt.ast_node_type());
-
-            let let_stmt: &LetStatement = match stmt.as_any().downcast_ref::<LetStatement>() {
-                Some(b) => b,
-                None => panic!("Invalid type")
-            };
-
-            match idx {
-                0 => assert_eq!(format!("{}", let_stmt), "let x = (x + y);"),
-                1 => assert_eq!(format!("{}", let_stmt), "let x = ((x + y) + (l + k));"),
-                2 => assert_eq!(format!("{}", let_stmt), "let x = ((x * 2) + ((3 * (2 + 3)) + 2));"),
-                _ => panic!("Unexcepted index {}", idx)
+            match stmt {
+                Statement::Let(s, expr) => {
+                    match idx {
+                        0 => assert_eq!(format!("{}", stmt), "let x = (x + y);"),
+                        1 => assert_eq!(format!("{}", stmt), "let x = ((x + y) + (l + k));"),
+                        2 => assert_eq!(format!("{}", stmt), "let x = ((x * 2) + ((3 * (2 + 3)) + 2));"),
+                        _ => panic!("Unexcepted index {}", idx)
+                    }
+                }
+                _ => panic!("Expected let statement found {}")
             }
 
             idx += 1;
@@ -616,8 +550,8 @@ mod tests {
 
     const TEST_IF_NO_ELSE_STR: &str = "
         if (x > y) {
-            x
-        }
+            let z = x + y;
+        };
     ";
 
     #[test]
@@ -626,43 +560,28 @@ mod tests {
 
         assert_eq!(statements.len(), 1);
         let mut stmt = &statements[0];
-
-        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
-
-        let mut expr_stmt: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
-            Some(b) => b,
-            None => panic!("Invalid type, expected expression statement")
-        };
-
-        let expr = &expr_stmt.expr;
-        assert_eq!(AstNode::IfExpression, expr.ast_node_type());
-
-        let if_expr: &IfExpression = match expr.as_any().downcast_ref::<IfExpression>() {
-            Some(x) => x,
-            None => panic!("Expected if expression")
-        };
-
-        let cond = &if_expr.cond;
-        assert_eq!(format!("{}", cond), "(x > y)");
-
-        let true_block = &if_expr.true_block;
-
-        stmt = &true_block.block[0];
-        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
-
-        let expr_stmt2: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
-            Some(b) => b,
-            None => panic!("Invalid type, expected expression statement")
-        };
-
-        assert_eq!(format!("{}", expr_stmt2.expr), "x");
+        match stmt {
+            Statement::Expression(expr) => {
+                match &**expr {
+                    Expression::If(cond, true_block, false_block) => {
+                        assert_eq!(cond.to_string(), "(x > y)");
+                        assert_eq!(true_block.to_string(), "{let z = (x + y);}");
+                        assert_eq!(false_block.is_none(), true);
+                    }
+                    _ => panic!("Expected if expression")
+                }
+            }
+            _ => panic!("Unexpected expression found")
+        }
     }
 
     const TEST_IF_ELSE_STR: &str = "
         if (x > y) {
-            x*2 + 3
+            x*2 + 3;
+            let x = y;
         } else {
-            4 + 5*y
+            4 + 5*y;
+            x + y;
         }
     ";
 
@@ -670,92 +589,55 @@ mod tests {
     fn test_parser_if_else() {
         let statements = test_case_statements(TEST_IF_ELSE_STR);
         assert_eq!(statements.len(), 1);
+
         let mut stmt = &statements[0];
-
-        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
-
-        let mut expr_stmt: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
-            Some(b) => b,
-            None => panic!("Invalid type, expected expression statement")
-        };
-
-        let expr = &expr_stmt.expr;
-        assert_eq!(AstNode::IfExpression, expr.ast_node_type());
-
-        let if_expr: &IfExpression = match expr.as_any().downcast_ref::<IfExpression>() {
-            Some(x) => x,
-            None => panic!("Expected if expression")
-        };
-
-        let cond = &if_expr.cond;
-        assert_eq!(format!("{}", cond), "(x > y)");
-
-        let true_block = &if_expr.true_block;
-
-        stmt = &true_block.block[0];
-        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
-
-        let expr_stmt2: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
-            Some(b) => b,
-            None => panic!("Invalid type, expected expression statement")
-        };
-
-        assert_eq!(format!("{}", expr_stmt2.expr), "((x * 2) + 3)");
-
-        let false_block = &if_expr.false_block.as_ref().unwrap();
-        stmt = &false_block.block[0];
-        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
-
-        let expr_stmt3: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
-            Some(b) => b,
-            None => panic!("Invalid type, expected expression statement")
-        };
-        assert_eq!(format!("{}", expr_stmt3.expr), "(4 + (5 * y))");
+        match stmt {
+            Statement::Expression(expr) => {
+                match &**expr {
+                    Expression::If(cond, true_block, false_block) => {
+                        assert_eq!(cond.to_string(), "(x > y)");
+                        assert_eq!(true_block.to_string(), "{((x * 2) + 3);let x = y;}");
+                        assert_eq!(false_block.as_ref().unwrap().to_string(), "{(4 + (5 * y));(x + y);}");
+                    }
+                    _ => panic!("Expected if expression")
+                }
+            }
+            _ => panic!("Unexpected expression found")
+        }
     }
 
     const TEST_FUNCTION_STR1: &str = "
-        fn(x,y) {
-            x + y;
-        }
+        fn(x,y,z) {
+            let z = x + y;
+            z
+        };
+        let fact = fn(x){
+                        if (x > 1) {
+                            return x;
+                        } else {
+                            return 1;
+                        };
+                    };
     ";
 
     #[test]
     fn test_parser_function() {
         let statements = test_case_statements(TEST_FUNCTION_STR1);
-        assert_eq!(statements.len(), 1);
+        assert_eq!(statements.len(), 2);
         let mut stmt = &statements[0];
-
-        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
-
-        let mut expr_stmt: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
-            Some(b) => b,
-            None => panic!("Invalid type, expected expression statement")
-        };
-
-        let expr = &expr_stmt.expr;
-        assert_eq!(AstNode::FunctionLiteralExpression, expr.ast_node_type());
-        let mut func_literal: &FunctionLiteral = match expr.as_any().downcast_ref::<FunctionLiteral>() {
-            Some(b) => b,
-            None => panic!("Invalid type, expected expression statement")
-        };
-
-        let parameters = &func_literal.parameters;
-
-        let param1 = &parameters[0];
-        assert_eq!(param1.value, Box::new(String::from("x")));
-
-        let param2 = &parameters[1];
-        assert_eq!(param2.value, Box::new(String::from("y")));
-
-        let stmt = &func_literal.block.block[0];
-        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
-
-        let expr_stmt2: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
-            Some(b) => b,
-            None => panic!("Invalid type, expected expression statement")
-        };
-
-        assert_eq!(format!("{}", expr_stmt2.expr), "(x + y)");
+        match stmt {
+            Statement::Expression(expr) => {
+                match &**expr {
+                    Expression::FunctionLiteral(params, block) => {
+                        assert_eq!(params.iter().as_ref().join(","), "x,y,z");
+                        assert_eq!(block.stmts[0].to_string(), "let z = (x + y);");
+                        assert_eq!(block.stmts[1].to_string(), "z;");
+                    }
+                    _ => panic!("Expected function literal")
+                }
+            }
+            _ => panic!("Unexpected expression found")
+        }
     }
 
     const TEST_FUNCTION_STR2: &str = "
@@ -769,33 +651,18 @@ mod tests {
         let statements = test_case_statements(TEST_FUNCTION_STR2);
         assert_eq!(statements.len(), 1);
         let mut stmt = &statements[0];
-
-        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
-
-        let mut expr_stmt: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
-            Some(b) => b,
-            None => panic!("Invalid type, expected expression statement")
-        };
-
-        let expr = &expr_stmt.expr;
-        assert_eq!(AstNode::FunctionLiteralExpression, expr.ast_node_type());
-        let mut func_literal: &FunctionLiteral = match expr.as_any().downcast_ref::<FunctionLiteral>() {
-            Some(b) => b,
-            None => panic!("Invalid type, expected expression statement")
-        };
-
-        let parameters = &func_literal.parameters;
-        assert_eq!(parameters.len(), 0);
-
-        let stmt = &func_literal.block.block[0];
-        assert_eq!(AstNode::ExpressionStatement, stmt.ast_node_type());
-
-        let expr_stmt2: &ExpressionStatement = match stmt.as_any().downcast_ref::<ExpressionStatement>() {
-            Some(b) => b,
-            None => panic!("Invalid type, expected expression statement")
-        };
-
-        assert_eq!(format!("{}", expr_stmt2.expr), "(10 * 20)");
+        match stmt {
+            Statement::Expression(expr) => {
+                match &**expr {
+                    Expression::FunctionLiteral(params, block) => {
+                        assert_eq!(params.len(), 0);
+                        assert_eq!(block.stmts[0].to_string(), "(10 * 20);");
+                    }
+                    _ => panic!("Expected function literal")
+                }
+            }
+            _ => panic!("Unexpected expression found")
+        }
     }
 
     const TEST_FUNCTION_CALL_STR: &str = "
@@ -808,82 +675,44 @@ mod tests {
     #[test]
     fn test_parser_call_with_parameters() {
         let statements = test_case_statements(TEST_FUNCTION_CALL_STR);
+        assert_eq!(statements.len(), 4);
 
-        // sum()
-        let expr_stmt: &ExpressionStatement = match statements[0].as_any().downcast_ref::<ExpressionStatement>() {
-            Some(e) => e,
-            None => panic!("Invalid expression statement {}", statements[0])
-        };
+        let mut idx = 0;
+        for idx in 0..statements.len() {
+            match &statements[idx] {
+                Statement::Expression(expr) => {
+                    match &**expr {
+                        Expression::Call(func_expr, params) => {
+                            match idx {
+                                0 => {
+                                    assert_eq!(func_expr.to_string(), "sum");
+                                    assert_eq!(params.len(), 0);
+                                },
+                                1 => {
+                                    assert_eq!(func_expr.to_string(), "sum3");
+                                    assert_eq!(params.iter().map(|p| p.to_string()).collect::<Vec<String>>().join(","), "x,y,z");
+                                },
+                                2 => {
+                                    assert_eq!(func_expr.to_string(), "sum_expr");
+                                    assert_eq!(params.iter().map(|p| p.to_string()).collect::<Vec<String>>().join(","),
+                                               "x,(y + w),z");
+                                },
+                                3 => {
+                                    assert_eq!(func_expr.to_string(), "fn(x,y){(x + y);}");
+                                    assert_eq!(params.iter().map(|p| p.to_string()).collect::<Vec<String>>().join(","),
+                                               "2,3");
+                                }
+                                _ => panic!("Unexpected idx {}", idx),
+                            }
 
-        let call_expr = match expr_stmt.expr.as_any().downcast_ref::<CallExpression>() {
-            Some(c) => c,
-            None => panic!("Invalid call expression {}", expr_stmt.expr)
-        };
 
-        assert_eq!(call_expr.function.to_string(), "sum");
-        assert_eq!(call_expr.parameters.len(), 0);
+                        },
+                        _ => panic!("Expected call expression")
+                    }
+                },
+                _ => panic!("Expected a expression statement"),
+            }
+        }
 
-        // sum(x, y, z)
-        let expr_stmt2: &ExpressionStatement = match statements[1].as_any().downcast_ref::<ExpressionStatement>() {
-            Some(e) => e,
-            None => panic!("Invalid expression statement {}", statements[1])
-        };
-
-        let call_expr2 = match expr_stmt2.expr.as_any().downcast_ref::<CallExpression>() {
-            Some(c) => c,
-            None => panic!("Invalid call expression {}", expr_stmt2.expr)
-        };
-
-        assert_eq!(call_expr2.function.to_string(), "sum3");
-        assert_eq!(call_expr2.parameters.len(), 3);
-
-        let param1 = &call_expr2.parameters[0];
-        let param1_id = match param1.as_any().downcast_ref::<Identifier>() {
-            Some(i) => i,
-            None => panic!("Invalid param {}", param1)
-        };
-        assert_eq!(param1_id.value, Box::new("x".to_string()));
-
-        let param2 = &call_expr2.parameters[1];
-        let param2_id = match param2.as_any().downcast_ref::<Identifier>() {
-            Some(i) => i,
-            None => panic!("Invalid param {}", param2)
-        };
-        assert_eq!(param2_id.value, Box::new("y".to_string()));
-
-        let param3 = &call_expr2.parameters[2];
-        let param3_id = match param3.as_any().downcast_ref::<Identifier>() {
-            Some(i) => i,
-            None => panic!("Invalid param {}", param3)
-        };
-        assert_eq!(param3_id.value, Box::new("z".to_string()));
-
-        // sum_expr(x, y + w, z);
-        let expr_stmt3: &ExpressionStatement = match statements[2].as_any().downcast_ref::<ExpressionStatement>() {
-            Some(e) => e,
-            None => panic!("Invalid expression statement {}", statements[2])
-        };
-
-        let call_expr3 = match expr_stmt3.expr.as_any().downcast_ref::<CallExpression>() {
-            Some(c) => c,
-            None => panic!("Invalid call expression {}", expr_stmt3.expr)
-        };
-
-        assert_eq!(call_expr3.function.to_string(), "sum_expr");
-        assert_eq!(call_expr3.parameters.len(), 3);
-
-        // fn(x, y){x + y;}(2, 3);
-        let expr_stmt4: &ExpressionStatement = match statements[3].as_any().downcast_ref::<ExpressionStatement>() {
-            Some(e) => e,
-            None => panic!("Invalid expression statement {}", statements[2])
-        };
-
-        let call_expr4 = match expr_stmt4.expr.as_any().downcast_ref::<CallExpression>() {
-            Some(c) => c,
-            None => panic!("Invalid call expression {}", expr_stmt3.expr)
-        };
-
-        assert_eq!(call_expr4.function.ast_node_type(), AstNode::FunctionLiteralExpression);
-        assert_eq!(call_expr4.parameters.len(), 2);
     }
 }

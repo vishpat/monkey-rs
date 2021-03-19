@@ -1,473 +1,341 @@
-use std::any::Any;
-use crate::object::{Object, ObjectType, Error, Nil, Environment};
-use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program, ExpressionStatement, Expression, InfixExpression, PrefixExpression, Statement, IfExpression, BlockStatement, ReturnStatement, LetStatement};
-use std::borrow::Borrow;
-use std::ops::Deref;
-use crate::lexer::Token;
+use crate::ast::*;
+use crate::object::Object;
+use crate::environment::Environment;
+use std::cell::RefCell;
+use std::rc::Rc;
 
-pub fn eval(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
-    //println!("Evaluating {:?}", node);
-
-    match node.ast_node_type() {
-        AstNode::IntegerExpression => eval_int_expr(node),
-        AstNode::BooleanExpression => eval_bool_expr(node),
-        AstNode::IdentifierExpression => eval_identifier(node, environment),
-        AstNode::ExpressionStatement => eval_expr_stmt(node, environment),
-        AstNode::PrefixExpression => eval_prefix_expression(node, environment),
-        AstNode::InfixExpression => eval_infix_expression(node, environment),
-        AstNode::IfExpression => eval_if_expression(node, environment),
-        AstNode::ReturnStatement => eval_return_statement(node, environment),
-        AstNode::LetStatement => eval_let_statement(node, environment),
-        AstNode::BlockStatement => eval_block_statement(node, environment),
-        AstNode::Program => eval_program(node, environment),
-        _ => Error::new(format!("Unrecognized AST node {:?}", node))
-    }
-}
-
-pub fn eval_bool_expr(node: &dyn Node) -> Box<dyn Object> {
-    match node.ast_node_type() {
-        AstNode::BooleanExpression =>
-            Boolean::new(node.as_any().downcast_ref::<Boolean>().unwrap().value),
-        _ => Error::new(format!("Invalid boolean expression {:?}", node))
-    }
-}
-
-pub fn eval_int_expr(node: &dyn Node) -> Box<dyn Object> {
-    match node.ast_node_type() {
-        AstNode::IntegerExpression =>
-            Integer::new(node.as_any().downcast_ref::<Integer>().unwrap().value),
-        _ => Error::new(format!("Eval: Invalid integer expression {:?}", node))
-    }
-}
-
-pub fn eval_identifier(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
-    match node.ast_node_type() {
-        AstNode::IdentifierExpression => {
-            let identifer = node.as_any().downcast_ref::<Identifier>().unwrap();
-
-            environment.get(identifer.value.to_string()).unwrap_or(
-                Error::new(format!("{} identifier not found", identifer.value)))
-        },
-        _ => Error::new(format!("Eval: Invalid integer expression {:?}", node))
-    }
-}
-
-pub fn eval_expr_stmt(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
-    match node.ast_node_type() {
-        AstNode::ExpressionStatement =>
-            eval(node.as_any().downcast_ref::<ExpressionStatement>().unwrap().expr.node(),
-                 environment),
-        _ => Error::new(format!("Eval: Invalid expression {:?}", node))
-    }
-}
-
-pub fn eval_let_statement(node: &dyn Node, environment: &mut Box<Environment> ) -> Box<dyn Object> {
-    match node.ast_node_type() {
-        AstNode::LetStatement=> {
-            let let_stmt=node.as_any().downcast_ref::<LetStatement>().unwrap();
-            let val = eval(let_stmt.expr.node(), environment);
-            environment.put(let_stmt.id.value.to_string(), val);
-            Nil::new()
-        },
-        _ => Error::new(format!("Eval: Invalid expression {:?}", node))
-    }
-}
-
-pub fn eval_prefix_expression(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
-
-    let prefix_expr: &PrefixExpression = match node.ast_node_type() {
-        AstNode::PrefixExpression => node.as_any().downcast_ref::<PrefixExpression>().unwrap(),
-        _ => return Error::new(format!("Eval: Invalid boolean expression {:?}", node))
-    };
-
-    let op = prefix_expr.op.as_ref();
-    let mut expr = prefix_expr.expr.as_ref();
-    let expr_evaluated = eval(expr.node(), environment);
-
-    match op {
-        Token::Bang => {
-            match expr_evaluated.obj_type() {
-                ObjectType::Boolean =>
-                    Boolean::new(!expr_evaluated.as_any().downcast_ref::<Boolean>().unwrap().value),
-                _ => Error::new(format!("Invalid prefix expression type {:?}, expected bool", expr.ast_node_type()))
+pub fn eval_identifier(identifier: &Expression, env: &Rc<RefCell<Environment>>) -> Object
+{
+    match identifier {
+        Expression::Identifier(i) => {
+            let id = env.borrow_mut().get(i.as_str());
+            if id.is_some() {
+                id.unwrap()
+            } else {
+                panic!("Did not find the identifer {}", i)
             }
         }
-        Token::Minus => {
-            match expr_evaluated.obj_type() {
-                ObjectType::Integer => {
-                    Integer::new(expr_evaluated.as_any().downcast_ref::<Integer>().unwrap().value*-1)
-                }
-                _ => Error::new(format!("Invalid prefix expression type {:?}, expected int", expr.ast_node_type()))
+        _ => panic!("Expected identifier")
+    }
+}
+
+pub fn eval_prefix_expression(prefix: &Prefix, expression: &Expression, env: &mut Rc<RefCell<Environment>>) -> Object {
+    let expr_val = eval_expression(expression, env);
+    match prefix {
+        Prefix::Minus => {
+            match expr_val {
+                Object::Integer(i) => Object::Integer(-1 * i),
+                _ => panic!("Invalid expression {} in prefix expression, expected integer", expr_val)
             }
         }
-        _ => Error::new(format!("Invalid prefix operator {}", op))
-    }
-}
-
-pub fn eval_infix_expression(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
-    let infix_expr: &InfixExpression = match node.as_any().downcast_ref::<InfixExpression>() {
-        Some(infix_expr) => infix_expr,
-        _ => return Error::new(format!("Eval: Invalid boolean expression {:?}", node))
-    };
-
-    let op = infix_expr.op.as_ref();
-    let left = eval(infix_expr.left.node(), environment);
-    let right = eval(infix_expr.right.node(), environment);
-
-    match op {
-        Token::Plus | Token::Minus | Token::Asterik | Token::Slash |
-        Token::Lt | Token::Gt | Token::Eq | Token::NotEq => {
-            let left_val = match left.obj_type() {
-                ObjectType::Integer => left.as_any().downcast_ref::<Integer>().unwrap().value ,
-                _ => return Error::new(format!("Invalid left val in expected Integer"))
-            };
-            let right_val = match right.obj_type() {
-                ObjectType::Integer => right.as_any().downcast_ref::<Integer>().unwrap().value,
-                _ => return Error::new(format!("Invalid right val in expected Integer"))
-            };
-            match op {
-                Token::Plus => Integer::new(left_val + right_val),
-                Token::Minus => Integer::new(left_val - right_val),
-                Token::Slash => Integer::new(left_val / right_val),
-                Token::Asterik => Integer::new(left_val * right_val),
-                Token::Lt => Boolean::new(left_val < right_val),
-                Token::Gt => Boolean::new(left_val > right_val),
-                Token::Eq => Boolean::new(left_val == right_val),
-                Token::NotEq => Boolean::new(left_val != right_val),
-                _ => Error::new(format!("Invalid op {}", op))
+        Prefix::Bang => {
+            match expr_val {
+                Object::Boolean(b) => Object::Boolean(!b),
+                _ => panic!("Invalid expression {} in prefix expression, expected boolean", expr_val)
             }
-        },
-        _ => Error::new(format!("Invalid infix operator {}", op))
+        }
     }
 }
 
-pub fn eval_if_expression(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
+pub fn eval_infix_expression(infix: &Infix, left: &Expression, right: &Expression, env: &mut Rc<RefCell<Environment>>) -> Object {
+    let left_obj = eval_expression(left, env);
+    let right_obj = eval_expression(right, env);
 
-    let if_expr: &IfExpression = match node.as_any().downcast_ref::<IfExpression>() {
-        Some(if_expr) => if_expr,
-        _ => return Error::new(format!("Eval: Invalid boolean expression {:?}", node))
+    let left_val = match left_obj {
+        Object::Integer(i) => i,
+        _ => panic!("Invalid value in expression {}, expected int", left_obj),
+    };
+    let right_val = match right_obj {
+        Object::Integer(i) => i,
+        _ => panic!("Invalid value in expression {}, expected int", right_obj),
     };
 
-    let cond= (eval(if_expr.cond.node(), environment)).as_any().downcast_ref::<Boolean>().unwrap().value;
-    if cond {
-        eval(if_expr.true_block.as_ref().node(), environment)
+    match infix {
+        Infix::Plus => Object::Integer(left_val + right_val),
+        Infix::Minus => Object::Integer(left_val - right_val),
+        Infix::Asterisk => Object::Integer(left_val * right_val),
+        Infix::Slash => Object::Integer(left_val / right_val),
+        Infix::NotEq => Object::Boolean(left_val != right_val),
+        Infix::Eq => Object::Boolean(left_val == right_val),
+        Infix::Gt => Object::Boolean(left_val > right_val),
+        Infix::Lt => Object::Boolean(left_val < right_val),
+        _ => panic!("Invalid op {}", infix)
+    }
+}
+
+pub fn eval_block_statement(block: &BlockStatement, env: &mut Rc<RefCell<Environment>>) -> Object {
+    let mut val = Object::Nil;
+    for stmt in &block.stmts {
+        val = match stmt {
+            Statement::Let(x, expr) => eval_let_statement(x.to_string(), &*expr, env),
+            Statement::Return(Some(x)) => {
+                return eval_return_statement(&*x, env);
+            }
+            Statement::Return(None) => {
+                return Object::Nil;
+            }
+            Statement::Expression(expr) => eval_expression(&*expr, env),
+        }
+    }
+    val
+}
+
+pub fn eval_if_expression(expr: &Expression, true_block: &BlockStatement,
+                          false_block: &Option<Box<BlockStatement>>, env: &mut Rc<RefCell<Environment>>) -> Object {
+    let expr_obj = eval_expression(expr, env);
+    let expr_val = match expr_obj {
+        Object::Boolean(v) => v,
+        _ => panic!("Expected boolean expression in if statement, found {}", expr_obj)
+    };
+
+    if expr_val {
+        eval_block_statement(true_block, env)
+    } else if false_block.is_some() {
+        eval_block_statement(false_block.as_ref().unwrap().as_ref(), env)
     } else {
-        if if_expr.false_block.is_some() {
-            eval(if_expr.false_block.as_ref().unwrap().node(), environment)
-        } else {
-            Nil::new()
+        Object::Nil
+    }
+}
+
+pub fn eval_function_parameters(params: &Vec<Expression>, env: &mut Rc<RefCell<Environment>>) -> Vec<Object> {
+    let mut param_objs = vec![];
+    for param in params.iter() {
+        let param_obj = eval_expression(param, env);
+        if param_obj == Object::Nil {
+            panic!("Unable to evaluate parameter {}", param);
         }
+        param_objs.push(eval_expression(param, env))
     }
+    param_objs
 }
 
-pub fn eval_return_statement(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
-    match node.as_any().downcast_ref::<ReturnStatement>(){
-        Some(ret) => eval(ret.expr.node(), environment),
-        _ => Error::new(format!("Return statement expected"))
-    }
-}
+pub fn eval_function_call(func_expr: &Box<Expression>, parameters: &Vec<Expression>,
+                          env: &mut Rc<RefCell<Environment>>) -> Object {
+    let mut func_params;
+    let mut func_block;
+    let mut func_env;
 
-pub fn eval_block_statement(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
-    let block = match node.as_any().downcast_ref::<BlockStatement>() {
-        Some(p) => p,
-        _ => return Error::new(format!("Eval: Invalid Code Block {:?}", node))
+    let func_obj = eval_expression(func_expr, env);
+
+    match func_obj {
+        Object::FunctionLiteral(params, block, env) =>
+            {
+                func_params = params;
+                func_block = block;
+                func_env = env;
+            }
+        _ => panic!("Invalid object type {}, expected function object", func_obj)
     };
 
-    let mut result: Box<dyn Object> = Error::new(String::from("Block Start"));
-    for stmt in block.block.iter() {
-        result = match stmt.ast_node_type() {
-            AstNode::ExpressionStatement | AstNode::BlockStatement |
-            AstNode::LetStatement | AstNode::ReturnStatement => eval(stmt.node(), environment),
-            _ => unimplemented!("Unimplemented eval for {:?}", stmt)
+
+    let param_objs = eval_function_parameters(parameters, env);
+    if param_objs.len() != func_params.len() {
+        panic!("Did not find the expected number of arguments for the function");
+    }
+
+    let mut func_new_env = Rc::new(RefCell::new(Environment::extend(env.clone())));
+
+    let mut idx = 0;
+    while idx < param_objs.len() {
+        func_new_env.borrow_mut().set(&*func_params[idx], param_objs[idx].clone());
+        idx += 1;
+    }
+
+    eval_block_statement(&func_block, &mut func_new_env)
+}
+
+pub fn eval_expression(expr: &Expression, env: &mut Rc<RefCell<Environment>>) -> Object {
+    match expr {
+        Expression::IntegerLiteral(i) => Object::Integer(*i),
+        Expression::Identifier(s) => eval_identifier(expr, env),
+        Expression::Boolean(b) => Object::Boolean(*b),
+        Expression::Prefix(prefix, expr) =>
+            eval_prefix_expression(prefix, expr, env),
+        Expression::Infix(infix, left, right) =>
+            eval_infix_expression(infix, left, right, env),
+        Expression::If(expr, true_block, false_block) =>
+            eval_if_expression(expr, true_block, false_block, env),
+        Expression::FunctionLiteral(params, block) =>
+            Object::FunctionLiteral(params.clone(), *block.clone(), env.clone()),
+        Expression::Call(func, params) => eval_function_call(func, params, env),
+        _ => Object::Nil
+    }
+}
+
+pub fn eval_let_statement(identifier: String, expr: &Expression, env: &mut Rc<RefCell<Environment>>) -> Object {
+    let expr_val = eval_expression(expr, env);
+    env.borrow_mut().set(identifier.as_str(), expr_val);
+    Object::Nil
+}
+
+pub fn eval_return_statement(expr: &Expression, env: &mut Rc<RefCell<Environment>>) -> Object {
+    eval_expression(expr, env)
+}
+
+pub fn eval_program(program: &Program, env: &mut Rc<RefCell<Environment>>) -> Object
+{
+    let mut val = Object::Nil;
+    for stmt in &program.stmts {
+        val = match stmt {
+            Statement::Let(id, expr) => eval_let_statement(id.to_string(), &*expr, env),
+            Statement::Return(Some(expr)) => { return eval_return_statement(&*expr, env); }
+            Statement::Return(None) => { return Object::Nil; }
+            Statement::Expression(expr) => eval_expression(&*expr, env),
         };
-
-        if stmt.ast_node_type() == AstNode::ReturnStatement {
-            break;
-        }
-
     }
-    result
+    return val;
 }
-
-pub fn eval_program(node: &dyn Node, environment: &mut Box<Environment>) -> Box<dyn Object> {
-    let program = match node.ast_node_type() {
-        AstNode::Program => node.as_any().downcast_ref::<Program>().unwrap(),
-        _ => return Error::new(format!("Eval: Invalid Program {:?}", node))
-    };
-
-    let mut result: Box<dyn Object> = Error::new(String::from("Program start"));
-    for stmt in &program.statements {
-        result = match stmt.ast_node_type() {
-            AstNode::ExpressionStatement | AstNode::ReturnStatement |
-            AstNode::BlockStatement | AstNode::LetStatement => eval(stmt.node(), environment),
-            _ => unimplemented!("Unimplemented eval for {:?}", stmt)
-        }
-    }
-    result
-}
-
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Statement, Boolean, Integer};
-    use crate::lexer::Lexer;
+    use crate::lexer::{Lexer, Token};
     use crate::parser::Parser;
-    use crate::evaluator::{eval, Object, ObjectType};
-    use crate::object::Environment;
+    use std::any::Any;
+    use crate::object::Object;
+    use crate::environment::Environment;
+    use crate::evaluator::*;
+    use std::process::id;
 
-    fn test_eval_program(input: &str) -> Box<dyn Object> {
-        let mut environment = Environment::new(None);
-        println!("Test: Evaluating {}", input);
+    fn test_eval_program(input: &str) -> Object {
+        let mut env = Rc::new(RefCell::new(Environment::new()));
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program().unwrap();
-        eval(program.as_ref(), &mut environment)
+        eval_program(program.as_ref(), &mut env)
     }
 
+    struct TestCase<'a> {
+        test_str: &'a str,
+        val: Object,
+    }
 
-    #[test]
-    fn test_eval_integer_expression() {
-        struct IntTestStruct {
-            int_str: String,
-            int_val: i64,
-        }
-
-        impl IntTestStruct {
-            fn new(int_str: String, int_val: i64) -> IntTestStruct {
-                IntTestStruct { int_str, int_val }
-            }
-        }
-
-        let mut test_cases: Vec<IntTestStruct> = vec![];
-        test_cases.push(IntTestStruct::new(String::from("1"), 1));
-        test_cases.push(IntTestStruct::new(String::from("3"), 3));
-
-        for tc in test_cases {
-            let int_obj = test_eval_program(tc.int_str.as_str());
-            assert_eq!(int_obj.obj_type(), ObjectType::Integer);
-            assert_eq!(int_obj.to_string(), tc.int_str);
+    fn check_test_cases(test_cases: Vec<TestCase>) {
+        for test_case in test_cases {
+            assert_eq!(test_eval_program(test_case.test_str), test_case.val);
         }
     }
 
     #[test]
-    fn test_eval_boolean_expression() {
-        struct BoolTestStruct {
-            bool_str: String,
-            bool_val: bool,
-        }
-
-        impl BoolTestStruct {
-            fn new(bool_str: String, bool_val: bool) -> BoolTestStruct {
-                BoolTestStruct { bool_str, bool_val }
-            }
-        }
-
-        let mut test_cases: Vec<BoolTestStruct> = vec![];
-        test_cases.push(BoolTestStruct::new(String::from("true"), true));
-        test_cases.push(BoolTestStruct::new(String::from("false"), false));
-
-        for tc in test_cases {
-            let bool_obj = test_eval_program(tc.bool_str.as_str());
-            assert_eq!(bool_obj.obj_type(), ObjectType::Boolean);
-            assert_eq!(bool_obj.to_string(), tc.bool_str);
-        }
+    fn test_eval_integer() {
+        let test_cases = vec![TestCase { test_str: "10", val: Object::Integer(10) }];
+        check_test_cases(test_cases);
     }
 
     #[test]
-    fn test_eval_prefix_bool_expression() {
-        struct PrefixTestStruct {
-            bool_str: String,
-            bool_val: bool,
-        }
-
-        impl PrefixTestStruct {
-            fn new(bool_str: String, bool_val: bool) -> PrefixTestStruct {
-                PrefixTestStruct { bool_str, bool_val }
-            }
-        }
-
-        let mut test_cases: Vec<PrefixTestStruct> = vec![];
-        test_cases.push(PrefixTestStruct::new(String::from("!true"), false));
-        test_cases.push(PrefixTestStruct::new(String::from("!false"), true));
-        test_cases.push(PrefixTestStruct::new(String::from("!!false"), false));
-        test_cases.push(PrefixTestStruct::new(String::from("!!!false"), true));
-        test_cases.push(PrefixTestStruct::new(String::from("!!!(4 > 2)"), false));
-        test_cases.push(PrefixTestStruct::new(String::from("!!!(2 + 3 > 2)"), false));
-
-        for tc in test_cases {
-            let bool_obj = test_eval_program(tc.bool_str.as_str());
-
-            assert_eq!(bool_obj.obj_type(), ObjectType::Boolean);
-            match bool_obj.as_any().downcast_ref::<Boolean>() {
-                Some(i) => {
-                    assert_eq!(i.value, tc.bool_val);
-                }
-                _ => panic!("Invalid type expected Boolean")
-            }
-        }
+    fn test_eval_boolean() {
+        let test_cases = vec![
+            TestCase { test_str: "true", val: Object::Boolean(true) },
+            TestCase { test_str: "false", val: Object::Boolean(false) },
+        ];
+        check_test_cases(test_cases);
     }
 
     #[test]
-    fn test_eval_prefix_int_expression() {
-        struct PrefixTestStruct {
-            int_str: String,
-            int_val: i64,
-        }
+    fn test_eval_return() {
+        let test_cases = vec![
+            TestCase { test_str: "return 0;", val: Object::Integer(0) },
+            TestCase { test_str: "return;", val: Object::Nil },
+        ];
 
-        impl PrefixTestStruct {
-            fn new(int_str: String, int_val: i64) -> PrefixTestStruct {
-                PrefixTestStruct { int_str, int_val }
-            }
-        }
-
-        let mut test_cases: Vec<PrefixTestStruct> = vec![];
-        test_cases.push(PrefixTestStruct::new(String::from("-1"), -1));
-        test_cases.push(PrefixTestStruct::new(String::from("-2"), -2));
-        test_cases.push(PrefixTestStruct::new(String::from("-(2*3 + 2) + 2"), -6));
-
-        for tc in test_cases {
-            let int_obj = test_eval_program(tc.int_str.as_str());
-
-            assert_eq!(int_obj.obj_type(), ObjectType::Integer);
-            match int_obj.as_any().downcast_ref::<Integer>() {
-                Some(i) => {
-                    assert_eq!(i.value, tc.int_val);
-                }
-                _ => panic!("Invalid type expected Integet")
-            }
-        }
+        check_test_cases(test_cases);
     }
 
     #[test]
-    fn test_eval_infix_bool_expression() {
-        struct InfixTestStruct {
-            bool_str: String,
-            bool_val: bool,
-        }
+    fn test_eval_prefix() {
+        let test_cases = vec![
+            TestCase { test_str: "!true", val: Object::Boolean(false) },
+            TestCase { test_str: "!false", val: Object::Boolean(true) },
+            TestCase { test_str: "-1", val: Object::Integer(-1) }
+        ];
 
-        impl InfixTestStruct {
-            fn new(bool_str: String, bool_val: bool) -> InfixTestStruct {
-                InfixTestStruct { bool_str, bool_val }
-            }
-        }
-
-        let mut test_cases: Vec<InfixTestStruct> = vec![];
-        test_cases.push(InfixTestStruct::new(String::from("5 > 3"), true));
-        test_cases.push(InfixTestStruct::new(String::from("4 < 2"), false));
-        test_cases.push(InfixTestStruct::new(String::from("5 == 3"), false));
-        test_cases.push(InfixTestStruct::new(String::from("4 != 2"), true));
-        test_cases.push(InfixTestStruct::new(String::from("(2*2 + 1) != 5"), false));
-        test_cases.push(InfixTestStruct::new(String::from("5 == 5"), true));
-        test_cases.push(InfixTestStruct::new(String::from("(2 + 3) == 5"), true));
-
-
-        for tc in test_cases {
-            let bool_obj = test_eval_program(tc.bool_str.as_str());
-
-            assert_eq!(bool_obj.obj_type(), ObjectType::Boolean);
-            match bool_obj.as_any().downcast_ref::<Boolean>() {
-                Some(i) => {
-                    assert_eq!(i.value, tc.bool_val);
-                }
-                _ => panic!("Invalid type expected Boolean")
-            }
-        }
+        check_test_cases(test_cases);
     }
 
     #[test]
-    fn test_eval_infix_int_expression() {
-        struct InfixTestStruct {
-            int_str: String,
-            int_val: i64,
-        }
+    fn test_eval_infix() {
+        let test_cases = vec![
+            TestCase { test_str: "10 > 20", val: Object::Boolean(false) },
+            TestCase { test_str: "-1 + 0", val: Object::Integer(-1) },
+            TestCase { test_str: "5 > 3", val: Object::Boolean(true) },
+            TestCase { test_str: "4 < 2", val: Object::Boolean(false) },
+            TestCase { test_str: "5 == 3", val: Object::Boolean(false) },
+            TestCase { test_str: "4 != 2", val: Object::Boolean(true) },
+            TestCase { test_str: "(2*2 + 1) == 5", val: Object::Boolean(true) },
+            TestCase { test_str: "(2 + 3)*2 == 10", val: Object::Boolean(true) },
+        ];
 
-        impl InfixTestStruct {
-            fn new(int_str: String, int_val: i64) -> InfixTestStruct {
-                InfixTestStruct { int_str, int_val }
-            }
-        }
-
-        let mut test_cases: Vec<InfixTestStruct> = vec![];
-        test_cases.push(InfixTestStruct::new(String::from("-1"), -1));
-        test_cases.push(InfixTestStruct::new(String::from("-2"), -2));
-
-        for tc in test_cases {
-            let int_obj = test_eval_program(tc.int_str.as_str());
-
-            assert_eq!(int_obj.obj_type(), ObjectType::Integer);
-            match int_obj.as_any().downcast_ref::<Integer>() {
-                Some(i) => {
-                    assert_eq!(i.value, tc.int_val);
-                }
-                _ => panic!("Invalid type expected Integet")
-            }
-        }
+        check_test_cases(test_cases);
     }
 
     #[test]
-    fn test_eval_return_statement() {
-        struct ReturnTestStruct {
-            return_str: String,
-            return_val: i64,
-        }
+    fn test_eval_if_expr() {
+        let test_cases = vec![
+            TestCase { test_str: "if (10 > 20) {20} else {10}", val: Object::Integer(10) },
+            TestCase { test_str: "if (21 > 20) {20} else {10}", val: Object::Integer(20) },
+            TestCase { test_str: "if (21 > 20) {20} ", val: Object::Integer(20) },
+            TestCase { test_str: "if (21 < 20) {20} ", val: Object::Nil },
+            TestCase { test_str: "if (21 > 20) {let x = 30; 20} ", val: Object::Integer(20) },
+        ];
 
-        impl ReturnTestStruct {
-            fn new(return_str: String, return_val: i64) -> ReturnTestStruct {
-                ReturnTestStruct { return_str, return_val }
-            }
-        }
-
-        let mut test_cases: Vec<ReturnTestStruct> = vec![];
-        test_cases.push(ReturnTestStruct::new(String::from("return 2"), 2));
-        test_cases.push(ReturnTestStruct::new(String::from("return (-2*3)"), -6));
-        test_cases.push(ReturnTestStruct::new(String::from("return 2 + 2"), 4));
-
-        for tc in test_cases {
-            let return_obj = test_eval_program(tc.return_str.as_str());
-
-            assert_eq!(return_obj.obj_type(), ObjectType::Integer);
-            match return_obj.as_any().downcast_ref::<Integer>() {
-                Some(i) => {
-                    assert_eq!(i.value, tc.return_val);
-                }
-                _ => panic!("Invalid type expected Integet")
-            }
-        }
+        check_test_cases(test_cases);
     }
 
     #[test]
-    fn test_eval_if_expression() {
-        struct IfTestStruct {
-            if_str: String,
-            if_val: i64,
-        }
+    fn test_eval_let_statements() {
+        let test_cases = vec![
+            TestCase { test_str: "let x = 10; if (x > 20) {20} else {10}", val: Object::Integer(10) },
+            TestCase { test_str: "let y = 20; if (21 > y) {20} else {10}", val: Object::Integer(20) },
+            TestCase { test_str: "let z = 30; z*z; ", val: Object::Integer(900) },
+            TestCase { test_str: "let a = 30; let b = 40; a + b", val: Object::Integer(70) },
+        ];
 
-        impl IfTestStruct {
-            fn new(if_str: String, if_val: i64) -> IfTestStruct {
-                IfTestStruct { if_str, if_val }
-            }
-        }
+        check_test_cases(test_cases);
+    }
 
-        let mut test_cases: Vec<IfTestStruct> = vec![];
-        test_cases.push(IfTestStruct::new(String::from("if (1 > 2) {1} else {2} "), 2));
-        test_cases.push(IfTestStruct::new(String::from("if (3 > 2) {-1} else {2} "), -1));
-        test_cases.push(IfTestStruct::new(String::from("if (3 > 2) {-1}"), -1));
-        test_cases.push(IfTestStruct::new(String::from("if (3 > 2) {-1 + 2}"), 1));
-        test_cases.push(IfTestStruct::new(String::from("if (1 > 2) {x} else {return 2*3 + 1; 10;}"), 7));
+    #[test]
+    fn test_eval_functions() {
+        let test_cases = vec![
+            TestCase { test_str: "let sum = fn(x, y){ x + y;}; \
+                                  sum(10, 20);",
+                        val: Object::Integer(30) },
 
-        for tc in test_cases {
-            let if_obj = test_eval_program(tc.if_str.as_str());
+            TestCase { test_str: "let square = fn(x){x*x}; \
+                                  square(10)",
+                        val: Object::Integer(100) },
 
-            assert_eq!(if_obj.obj_type(), ObjectType::Integer);
-            match if_obj.as_any().downcast_ref::<Integer>() {
-                Some(i) => {
-                    assert_eq!(i.value, tc.if_val);
-                }
-                _ => panic!("Invalid type expected Integet")
-            }
-        }
+            TestCase { test_str: "let gt = fn(x, y){ \
+                                                if (!(x > y)) {\
+                                                        x*x\
+                                                } else {\
+                                                        y\
+                                                };\
+                                           }; \
+                                  gt(3, 2)", val: Object::Integer(2) },
 
-        let if_obj = test_eval_program("if (2 > 3) {1}");
-        assert_eq!(if_obj.obj_type(), ObjectType::Nil);
+            TestCase { test_str: "let gt = fn(x, y){ \
+                                                if (x > y) \
+                                                    {x*x} \
+                                                else {\
+                                                     y\
+                                                };\
+                                            }; \
+                                  gt(3, 2)", val: Object::Integer(9)},
+
+            TestCase { test_str: "let fact = fn(x) {\
+                                                if (x > 1) {\
+                                                    x*fact(x - 1);\
+                                                } else {\
+                                                    x\
+                                                };\
+                                             }; \
+                                  fact(8);", val: Object::Integer(40320)},
+
+            TestCase { test_str: "let sum = fn(x,y){x + y;};\
+                                  let sqr = fn(x){let z = sum(x, x); z*z;};\
+                                  let z = sum(2, 3) + sqr(2);\
+                                  z;", val: Object::Integer(21)},
+        ];
+
+        check_test_cases(test_cases);
     }
 }

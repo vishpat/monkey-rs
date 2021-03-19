@@ -1,124 +1,30 @@
-use std::any::Any;
-use crate::ast::{Node, AstNode, Integer, Boolean, Identifier, Program};
-use crate::ast;
-use std::collections::HashMap;
-use crate::lexer::Token::Int;
+use std;
+use crate::ast::BlockStatement;
+use crate::environment::Environment;
+use std::cell::RefCell;
+use std::rc::Rc;
 
-#[derive(Debug, PartialEq, Eq, Clone, PartialOrd)]
-pub enum ObjectType {
-    Error,
+#[derive(Debug, PartialEq, Clone)]
+pub enum Object {
+    Error(String),
     Nil,
-    Integer,
-    Boolean,
-    Identifier,
-    If,
-    Let,
-    Function,
-    Call,
+    Integer(i64),
+    Boolean(bool),
+    Identifier(String),
+    FunctionLiteral(Vec<String>, BlockStatement, Rc<RefCell<Environment>>)
 }
 
-pub trait Object: std::fmt::Debug + std::fmt::Display {
-    fn obj_type(&self) -> ObjectType;
-
-    // Required to downcast a Trait to specify structure
-
-    fn as_any(&self) -> &dyn Any;
-}
-
-impl Object for Integer {
-    fn obj_type(&self) -> ObjectType {
-        ObjectType::Integer
-    }
-
-    fn as_any(&self) -> &dyn Any { self }
-}
-
-impl Object for Boolean {
-    fn obj_type(&self) -> ObjectType {
-        ObjectType::Boolean
-    }
-
-    fn as_any(&self) -> &dyn Any { self }
-}
-
-#[derive(Debug)]
-pub struct Error {
-    msg: String
-}
-
-impl Error {
-    pub fn new(msg: String) -> Box<Error> {
-        Box::new(Error{msg})
-    }
-}
-
-impl std::fmt::Display for Error {
+impl std::fmt::Display for Object {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(fmt, "{}", self.msg)
-    }
-}
-
-impl Object for Error {
-    fn obj_type(&self) -> ObjectType {
-        ObjectType::Error
-    }
-
-    fn as_any(&self) -> &dyn Any { self }
-}
-
-#[derive(Debug)]
-pub struct Nil {
-}
-
-impl Nil {
-    pub fn new() -> Box<Nil> {
-        Box::new(Nil{})
-    }
-}
-
-impl std::fmt::Display for Nil {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(fmt, "Nil")
-    }
-}
-
-impl Object for Nil {
-    fn obj_type(&self) -> ObjectType {
-        ObjectType::Nil
-    }
-
-    fn as_any(&self) -> &dyn Any { self }
-}
-
-
-pub struct Environment {
-    data: HashMap<String, Box<dyn Object>>,
-    parent: Option<Box<Environment>>
-}
-
-impl Environment {
-    pub fn new(parent: Option<Box<Environment>>) -> Box<Environment> {
-        Box::new(Environment{data: HashMap::new(), parent })
-    }
-
-    pub fn put(&mut self, k: String, v: Box<dyn Object>) {
-        self.data.insert(k, v);
-    }
-
-    pub fn get(&self, k:String) -> Option<Box<dyn Object>> {
-        let val = self.data.get(&k);
-        if val.is_some() {
-            let val2 = val.unwrap();
-            let val3: Option<Box<dyn Object>> = match val2.obj_type() {
-                ObjectType::Integer => Some(Integer::new(val2.as_any().downcast_ref::<Integer>().unwrap().value)),
-                ObjectType::Boolean => Some(Boolean::new(val2.as_any().downcast_ref::<Boolean>().unwrap().value)),
-                _ => None
-            };
-            return val3;
-        } else if self.parent.is_some() {
-           return self.parent.as_ref().unwrap().get(k);
+        match self {
+            Object::Error(e) => write!(fmt, "{}", e),
+            Object::Nil => write!(fmt, "nil"),
+            Object::Integer(i) => write!(fmt, "{}", i),
+            Object::Boolean(b) => write!(fmt, "{}", b),
+            Object::Identifier(s) => write!(fmt, "{}", s),
+            Object::FunctionLiteral(parameters, block, _) => write!(fmt,"({}){{ {} }}",
+            parameters.join(","), block.to_string()),
+            _ => panic!("Invalid object {}", self),
         }
-
-        None
     }
 }
