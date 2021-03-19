@@ -1,20 +1,14 @@
 use crate::ast::*;
 use crate::object::Object;
 use crate::environment::Environment;
+use std::cell::RefCell;
+use std::rc::Rc;
 
-pub fn eval_integer(int_literal: &Expression) -> Object
-{
-    match int_literal {
-        Expression::IntegerLiteral(i) => Object::Integer(*i),
-        _ => panic!("Expected integer literal"),
-    }
-}
-
-pub fn eval_identifier(identifier: &Expression, env: &Box<Environment>) -> Object
+pub fn eval_identifier(identifier: &Expression, env: &Rc<RefCell<Environment>>) -> Object
 {
     match identifier {
         Expression::Identifier(i) => {
-            let id = env.get(i.as_str());
+            let id = env.borrow_mut().get(i.as_str());
             if id.is_some() {
                 id.unwrap()
             } else {
@@ -25,7 +19,7 @@ pub fn eval_identifier(identifier: &Expression, env: &Box<Environment>) -> Objec
     }
 }
 
-pub fn eval_prefix_expression(prefix: &Prefix, expression: &Expression, env: &mut Box<Environment>) -> Object {
+pub fn eval_prefix_expression(prefix: &Prefix, expression: &Expression, env: &mut Rc<RefCell<Environment>>) -> Object {
     let expr_val = eval_expression(expression, env);
     match prefix {
         Prefix::Minus => {
@@ -43,7 +37,7 @@ pub fn eval_prefix_expression(prefix: &Prefix, expression: &Expression, env: &mu
     }
 }
 
-pub fn eval_infix_expression(infix: &Infix, left: &Expression, right: &Expression, env: &mut Box<Environment>) -> Object {
+pub fn eval_infix_expression(infix: &Infix, left: &Expression, right: &Expression, env: &mut Rc<RefCell<Environment>>) -> Object {
     let left_obj = eval_expression(left, env);
     let right_obj = eval_expression(right, env);
 
@@ -69,7 +63,7 @@ pub fn eval_infix_expression(infix: &Infix, left: &Expression, right: &Expressio
     }
 }
 
-pub fn eval_block_statement(block: &BlockStatement, env: &mut Box<Environment>) -> Object {
+pub fn eval_block_statement(block: &BlockStatement, env: &mut Rc<RefCell<Environment>>) -> Object {
     let mut val = Object::Nil;
     for stmt in &block.stmts {
         val = match stmt {
@@ -87,7 +81,7 @@ pub fn eval_block_statement(block: &BlockStatement, env: &mut Box<Environment>) 
 }
 
 pub fn eval_if_expression(expr: &Expression, true_block: &BlockStatement,
-                          false_block: &Option<Box<BlockStatement>>, env: &mut Box<Environment>) -> Object {
+                          false_block: &Option<Box<BlockStatement>>, env: &mut Rc<RefCell<Environment>>) -> Object {
     let expr_obj = eval_expression(expr, env);
     let expr_val = match expr_obj {
         Object::Boolean(v) => v,
@@ -103,8 +97,52 @@ pub fn eval_if_expression(expr: &Expression, true_block: &BlockStatement,
     }
 }
 
+pub fn eval_function_parameters(params: &Vec<Expression>,  env: &mut Rc<RefCell<Environment>>) -> Vec<Object> {
+    let mut param_objs = vec![];
+    for param in params.iter() {
+        let param_obj = eval_expression(param, env);
+        if param_obj == Object::Nil {
+            panic!("Unable to evaluate parameter {}", param);
+        }
+        param_objs.push(eval_expression(param, env))
+    }
+    param_objs
+}
 
-pub fn eval_expression(expr: &Expression, env: &mut Box<Environment>) -> Object {
+pub fn eval_function_call(func_expr: &Box<Expression>, parameters: &Vec<Expression>,
+                          env: &mut Rc<RefCell<Environment>>) -> Object {
+    let mut func_params;
+    let mut func_block;
+    let mut func_env;
+
+    let func_obj = eval_expression(func_expr, env);
+    match func_obj {
+        Object::FunctionLiteral(params, block, env) =>
+            {
+                func_params = params;
+                func_block = block;
+                func_env = env.clone();
+            },
+        _ => panic!("Invalid object type {}, expected function object", func_obj)
+    };
+
+    let param_objs = eval_function_parameters(parameters, env);
+    if param_objs.len() != func_params.len() {
+        panic!("Did not find the expected number of arguments for the function");
+    }
+
+    let mut func_env_extended = Environment::extend(func_env);
+
+    let mut idx = 0;
+    while idx < param_objs.len() {
+        func_env_extended.set(&*func_params[idx], param_objs[idx].clone());
+    }
+
+    let mut func_env2 = Rc::new(RefCell::new(func_env_extended));
+    eval_block_statement(&func_block, &mut func_env2)
+}
+
+pub fn eval_expression(expr: &Expression, env: &mut Rc<RefCell<Environment>>) -> Object {
     match expr {
         Expression::IntegerLiteral(i) => Object::Integer(*i),
         Expression::Identifier(s) => eval_identifier(expr, env),
@@ -116,22 +154,23 @@ pub fn eval_expression(expr: &Expression, env: &mut Box<Environment>) -> Object 
         Expression::If(expr, true_block, false_block) =>
             eval_if_expression(expr, true_block, false_block, env),
         Expression::FunctionLiteral(params, block) =>
-            Object::FunctionLiteral(params.clone(), *block.clone()),
+            Object::FunctionLiteral(params.clone(), *block.clone(), env.clone()),
+        Expression::Call(func, params) => eval_function_call(func, params, env),
         _ => Object::Nil
     }
 }
 
-pub fn eval_let_statement(identifier: String, expr: &Expression, env: &mut Box<Environment>) -> Object {
+pub fn eval_let_statement(identifier: String, expr: &Expression, env: &mut Rc<RefCell<Environment>>) -> Object {
     let expr_val = eval_expression(expr, env);
-    env.set(identifier.as_str(), expr_val);
+    env.borrow_mut().set(identifier.as_str(), expr_val);
     Object::Nil
 }
 
-pub fn eval_return_statement(expr: &Expression, env: &mut Box<Environment>) -> Object {
+pub fn eval_return_statement(expr: &Expression, env: &mut Rc<RefCell<Environment>>) -> Object {
     eval_expression(expr, env)
 }
 
-pub fn eval_program(program: &Program, env: &mut Box<Environment>) -> Object
+pub fn eval_program(program: &Program, env: &mut Rc<RefCell<Environment>>) -> Object
 {
     let mut val = Object::Nil;
     for stmt in &program.stmts {
@@ -156,7 +195,7 @@ mod tests {
     use std::process::id;
 
     fn test_eval_program(input: &str) -> Object {
-        let mut env = Box::new(Environment::new());
+        let mut env = Rc::new(RefCell::new(Environment::new()));
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program().unwrap();

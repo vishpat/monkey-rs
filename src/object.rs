@@ -1,5 +1,8 @@
 use std;
 use crate::ast::BlockStatement;
+use crate::environment::Environment;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
@@ -8,7 +11,7 @@ pub enum Object {
     Integer(i64),
     Boolean(bool),
     Identifier(String),
-    FunctionLiteral(Vec<String>, BlockStatement)
+    FunctionLiteral(Vec<String>, BlockStatement, Rc<RefCell<Environment>>)
 }
 
 impl std::fmt::Display for Object {
@@ -19,7 +22,7 @@ impl std::fmt::Display for Object {
             Object::Integer(i) => write!(fmt, "{}", i),
             Object::Boolean(b) => write!(fmt, "{}", b),
             Object::Identifier(s) => write!(fmt, "{}", s),
-            Object::FunctionLiteral(parameters, block) => write!(fmt,"({}){{ {} }}",
+            Object::FunctionLiteral(parameters, block, _) => write!(fmt,"({}){{ {} }}",
             parameters.join(","), block.to_string()),
             _ => panic!("Invalid object {}", self),
         }
