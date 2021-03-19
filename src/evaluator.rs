@@ -14,7 +14,7 @@ pub fn eval_identifier(identifier: &Expression, env: &Rc<RefCell<Environment>>) 
             } else {
                 panic!("Did not find the identifer {}", i)
             }
-        },
+        }
         _ => panic!("Expected identifier")
     }
 }
@@ -97,7 +97,7 @@ pub fn eval_if_expression(expr: &Expression, true_block: &BlockStatement,
     }
 }
 
-pub fn eval_function_parameters(params: &Vec<Expression>,  env: &mut Rc<RefCell<Environment>>) -> Vec<Object> {
+pub fn eval_function_parameters(params: &Vec<Expression>, env: &mut Rc<RefCell<Environment>>) -> Vec<Object> {
     let mut param_objs = vec![];
     for param in params.iter() {
         let param_obj = eval_expression(param, env);
@@ -113,15 +113,17 @@ pub fn eval_function_call(func_expr: &Box<Expression>, parameters: &Vec<Expressi
                           env: &mut Rc<RefCell<Environment>>) -> Object {
     let mut func_params;
     let mut func_block;
+    let mut func_env;
 
     let func_obj = eval_expression(func_expr, env);
 
     match func_obj {
-        Object::FunctionLiteral(params, block, _) =>
+        Object::FunctionLiteral(params, block, env) =>
             {
                 func_params = params;
                 func_block = block;
-            },
+                func_env = env;
+            }
         _ => panic!("Invalid object type {}, expected function object", func_obj)
     };
 
@@ -131,15 +133,15 @@ pub fn eval_function_call(func_expr: &Box<Expression>, parameters: &Vec<Expressi
         panic!("Did not find the expected number of arguments for the function");
     }
 
-    let mut func_env = Rc::new(RefCell::new(Environment::new()));
+    let mut func_new_env = Rc::new(RefCell::new(Environment::extend(env.clone())));
 
     let mut idx = 0;
     while idx < param_objs.len() {
-        func_env.borrow_mut().set(&*func_params[idx], param_objs[idx].clone());
+        func_new_env.borrow_mut().set(&*func_params[idx], param_objs[idx].clone());
         idx += 1;
     }
 
-    eval_block_statement(&func_block, &mut func_env)
+    eval_block_statement(&func_block, &mut func_new_env)
 }
 
 pub fn eval_expression(expr: &Expression, env: &mut Rc<RefCell<Environment>>) -> Object {
@@ -285,7 +287,6 @@ mod tests {
             TestCase { test_str: "let y = 20; if (21 > y) {20} else {10}", val: Object::Integer(20) },
             TestCase { test_str: "let z = 30; z*z; ", val: Object::Integer(900) },
             TestCase { test_str: "let a = 30; let b = 40; a + b", val: Object::Integer(70) },
-
         ];
 
         check_test_cases(test_cases);
@@ -294,8 +295,45 @@ mod tests {
     #[test]
     fn test_eval_functions() {
         let test_cases = vec![
-            TestCase { test_str: "let sum = fn(x, y){ x + y;}; sum(10, 20);", val: Object::Integer(30) },
+            TestCase { test_str: "let sum = fn(x, y){ x + y;}; \
+                                  sum(10, 20);",
+                        val: Object::Integer(30) },
 
+            TestCase { test_str: "let square = fn(x){x*x}; \
+                                  square(10)",
+                        val: Object::Integer(100) },
+
+            TestCase { test_str: "let gt = fn(x, y){ \
+                                                if (!(x > y)) {\
+                                                        x*x\
+                                                } else {\
+                                                        y\
+                                                };\
+                                           }; \
+                                  gt(3, 2)", val: Object::Integer(2) },
+
+            TestCase { test_str: "let gt = fn(x, y){ \
+                                                if (x > y) \
+                                                    {x*x} \
+                                                else {\
+                                                     y\
+                                                };\
+                                            }; \
+                                  gt(3, 2)", val: Object::Integer(9)},
+
+            TestCase { test_str: "let fact = fn(x) {\
+                                                if (x > 1) {\
+                                                    x*fact(x - 1);\
+                                                } else {\
+                                                    x\
+                                                };\
+                                             }; \
+                                  fact(8);", val: Object::Integer(40320)},
+
+            TestCase { test_str: "let sum = fn(x,y){x + y;};\
+                                  let sqr = fn(x){let z = sum(x, x); z*z;};\
+                                  let z = sum(2, 3) + sqr(2);\
+                                  z;", val: Object::Integer(21)},
         ];
 
         check_test_cases(test_cases);
