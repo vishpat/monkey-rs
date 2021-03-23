@@ -41,25 +41,43 @@ pub fn eval_infix_expression(infix: &Infix, left: &Expression, right: &Expressio
     let left_obj = eval_expression(left, env);
     let right_obj = eval_expression(right, env);
 
-    let left_val = match left_obj {
-        Object::Integer(i) => i,
+    match left_obj {
+        Object::Integer(i) => {
+            let left_int = i;
+            let mut right_int;
+            match right_obj {
+                Object::Integer(i) => {
+                    right_int = i;
+                    match infix {
+                        Infix::Plus => Object::Integer(left_int + right_int),
+                        Infix::Minus => Object::Integer(left_int - right_int),
+                        Infix::Asterisk => Object::Integer(left_int * right_int),
+                        Infix::Slash => Object::Integer(left_int / right_int),
+                        Infix::NotEq => Object::Boolean(left_int != right_int),
+                        Infix::Eq => Object::Boolean(left_int == right_int),
+                        Infix::Gt => Object::Boolean(left_int > right_int),
+                        Infix::Lt => Object::Boolean(left_int < right_int),
+                        _ => panic!("Inintid op {}", infix)
+                    }
+                }
+                _ => panic!("Expected integer {}", right_obj),
+            }
+        },
+        Object::String(s) => {
+            let left_str = s;
+            let mut right_str;
+            match right_obj {
+                Object::String(s) => {
+                    right_str = s;
+                    match infix {
+                        Infix::Plus => Object::String(left_str + &*right_str),
+                        _ => panic!("Invalid op {} for strings", infix)
+                    }
+                }
+                _ => panic!("Expected String{}", right_obj),
+            }
+        },
         _ => panic!("Invalid value in expression {}, expected int", left_obj),
-    };
-    let right_val = match right_obj {
-        Object::Integer(i) => i,
-        _ => panic!("Invalid value in expression {}, expected int", right_obj),
-    };
-
-    match infix {
-        Infix::Plus => Object::Integer(left_val + right_val),
-        Infix::Minus => Object::Integer(left_val - right_val),
-        Infix::Asterisk => Object::Integer(left_val * right_val),
-        Infix::Slash => Object::Integer(left_val / right_val),
-        Infix::NotEq => Object::Boolean(left_val != right_val),
-        Infix::Eq => Object::Boolean(left_val == right_val),
-        Infix::Gt => Object::Boolean(left_val > right_val),
-        Infix::Lt => Object::Boolean(left_val < right_val),
-        _ => panic!("Invalid op {}", infix)
     }
 }
 
@@ -148,6 +166,7 @@ pub fn eval_expression(expr: &Expression, env: &mut Rc<RefCell<Environment>>) ->
     match expr {
         Expression::IntegerLiteral(i) => Object::Integer(*i),
         Expression::Identifier(s) => eval_identifier(expr, env),
+        Expression::String(s) => Object::String(s.to_string()),
         Expression::Boolean(b) => Object::Boolean(*b),
         Expression::Prefix(prefix, expr) =>
             eval_prefix_expression(prefix, expr, env),
@@ -262,6 +281,9 @@ mod tests {
             TestCase { test_str: "4 != 2", val: Object::Boolean(true) },
             TestCase { test_str: "(2*2 + 1) == 5", val: Object::Boolean(true) },
             TestCase { test_str: "(2 + 3)*2 == 10", val: Object::Boolean(true) },
+            TestCase { test_str: "\"ab\" + \"cd\"", val: Object::String(String::from("abcd")) },
+            TestCase { test_str: "\"ab\" + \"cd\" + \"ef\"",
+                val: Object::String(String::from("abcdef")) },
         ];
 
         check_test_cases(test_cases);
@@ -336,6 +358,10 @@ mod tests {
                                   z;", val: Object::Integer(21)},
 
             TestCase{test_str: "fn(x, y, z){x + y + z}(1, 2, 3);", val: Object::Integer(6)},
+            TestCase{test_str: "let a = \"wx\";\
+                                let b = \"yz\";\
+                                let z = a + b;\
+                                z;", val: Object::String(String::from("wxyz"))},
         ];
 
         check_test_cases(test_cases);
