@@ -8,6 +8,7 @@ pub enum Token {
 
     // Identifiers + Literals
     Ident(String),
+    String(String),
     Int(i64),
 
     // Operators
@@ -49,6 +50,7 @@ fn token_str_repr(token: &Token) -> Box<String> {
         // Identifiers + Literals
         Token::Ident(s) => s.clone(),
         Token::Int(i) => i.to_string(),
+        Token::String(s) => s.clone(),
 
         // Operators
         Token::Assign => String::from("="),
@@ -100,6 +102,7 @@ impl Lexer {
 
         let size = input.len();
         let mut index = 0;
+        let mut string_start = false;
 
         while index < size {
 
@@ -160,6 +163,20 @@ impl Lexer {
                 index += 1;
                 tokens.push(token);
                 continue;
+            }
+
+            if string_start == false && input.chars().nth(index).unwrap() == '"' {
+                let start = index;
+                index += 1;
+                while index < size && input.chars().nth(index).unwrap() != '"' {
+                    index += 1;
+                }
+                let end= index;
+                if index < size {
+                    index += 1;
+                }
+                let str_token = Token::String(input[(start + 1)..end].to_string());
+                tokens.push(str_token);
             }
 
             // Identifiers and keywords
@@ -236,6 +253,8 @@ mod tests {
 
     10 == 10;
     10 != 9;
+    let x = \"abcd\";
+    let y = \"\";
     ";
 
 
@@ -314,6 +333,16 @@ mod tests {
             Token::Int(10),
             Token::NotEq,
             Token::Int(9),
+            Token::Semicolon,
+            Token::Let,
+            Token::Ident(String::from("x")),
+            Token::Assign,
+            Token::String(String::from("abcd")),
+            Token::Semicolon,
+            Token::Let,
+            Token::Ident(String::from("y")),
+            Token::Assign,
+            Token::String(String::from("")),
             Token::Semicolon,
             Token::Eof,
         ];

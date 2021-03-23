@@ -140,6 +140,15 @@ impl Parser {
         }
     }
 
+    fn parse_string(&mut self) -> Box<Expression> {
+        let curr_token = &self.curr_token;
+
+        match curr_token {
+            Token::String(s) => Box::new(Expression::String(s.to_string())),
+            _ => panic!("Unable to parse string {}", self.curr_token)
+        }
+    }
+
     fn parse_integer(&mut self) -> Box<Expression> {
         let curr_token = &self.curr_token;
 
@@ -229,6 +238,7 @@ impl Parser {
         let mut expr: Box<Expression> = match t {
             Token::Ident(s) => self.parse_identifier(),
             Token::Int(s) => self.parse_integer(),
+            Token::String(s) => self.parse_string(),
             Token::True | Token::False => self.parse_boolean(),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::LParen => self.parse_group_expression(),
@@ -359,7 +369,6 @@ mod tests {
     use std::any::Any;
     use crate::ast::{Statement, Prefix};
     use crate::ast::Expression;
-    use std::process::id;
 
     const TEST_STR: &str = "
     let five = 5;
@@ -381,6 +390,8 @@ mod tests {
 
     10 == 10;
     10 != 9;
+    let x = \"x\";
+    let y = \"y\";
     ";
 
     #[test]
@@ -410,13 +421,14 @@ mod tests {
         let twenty = 20 + 20;
         let zero = 30 - 30;
         let complex = 11 - 22 + 11 * 22;
+        let x = \"abcd\";
     ";
 
     #[test]
     fn test_parser_let_statements() {
         let statements = test_case_statements(TEST_LET_STATEMENTS_STR);
 
-        assert_eq!(statements.len(), 6);
+        assert_eq!(statements.len(), 7);
         let mut idx = 0;
         for stmt in statements.iter() {
             let let_stmt = match stmt {
@@ -440,6 +452,7 @@ mod tests {
                         3 => assert_eq!(stmt.to_string(), "let twenty = (20 + 20);"),
                         4 => assert_eq!(stmt.to_string(), "let zero = (30 - 30);"),
                         5 => assert_eq!(stmt.to_string(), "let complex = ((11 - 22) + (11 * 22));"),
+                        6 => assert_eq!(stmt.to_string(), "let x = \"abcd\";"),
                         _ => panic!("Unexcepted index {}", idx)
                     }
                 },
@@ -733,5 +746,29 @@ mod tests {
             }
         }
 
+    }
+
+    const TEST_STRINGS_STR: &str = "
+        \"abcd\";
+    ";
+
+    #[test]
+    fn test_parser_string_statements() {
+        let statements = test_case_statements(TEST_STRINGS_STR);
+
+        assert_eq!(statements.len(), 1);
+        let mut idx = 0;
+        for stmt in statements.iter() {
+            match stmt {
+                Statement::Expression(expr) => {
+                    match &**expr {
+                        Expression::String(s) => println!("{}", s.to_string()),
+                        _ => panic!("Expected string literal in expression found {}", expr)
+                    }
+                },
+                _ => panic!("Expected a string expression"),
+            }
+            idx += 1;
+        }
     }
 }
