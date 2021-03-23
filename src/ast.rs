@@ -80,6 +80,7 @@ impl fmt::Display for Infix {
 pub enum Expression {
     Identifier(String),
     IntegerLiteral(i64),
+    String(String),
     Boolean(bool),
     Prefix(Prefix, Box<Expression>),
     Infix(Infix, Box<Expression>, Box<Expression>),
@@ -93,6 +94,7 @@ impl fmt::Display for Expression {
         match self {
             Expression::Identifier(s) => write!(f, "{}", s),
             Expression::IntegerLiteral(i) => write!(f, "{}", i),
+            Expression::String(s) => write!(f, "\"{}\"", s),
             Expression::Boolean(b) => write!(f, "{}", b),
             Expression::Prefix(p, exp) => write!(f, "({}{})", p, exp),
             Expression::Infix(op, left, right) =>
