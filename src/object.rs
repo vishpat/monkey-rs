@@ -12,7 +12,8 @@ pub enum Object {
     Boolean(bool),
     String(String),
     Identifier(String),
-    FunctionLiteral(Vec<String>, BlockStatement, Rc<RefCell<Environment>>)
+    FunctionInBuilt(String),
+    FunctionLiteral(Vec<String>, BlockStatement, Rc<RefCell<Environment>>),
 }
 
 impl std::fmt::Display for Object {
@@ -24,8 +25,8 @@ impl std::fmt::Display for Object {
             Object::Boolean(b) => write!(fmt, "{}", b),
             Object::Identifier(s) => write!(fmt, "{}", s),
             Object::String(s) => write!(fmt, "\"{}\"", s),
-            Object::FunctionLiteral(parameters, block, _) => write!(fmt,"({}){{ {} }}",
-            parameters.join(","), block.to_string()),
+            Object::FunctionLiteral(parameters, block, _) => write!(fmt, "({}){{ {} }}",
+                                                                    parameters.join(","), block.to_string()),
             _ => panic!("Invalid object {}", self),
         }
     }

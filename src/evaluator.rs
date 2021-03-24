@@ -1,6 +1,7 @@
 use crate::ast::*;
 use crate::object::Object;
 use crate::environment::Environment;
+use crate::inbuilt::{get_inbuilt_function, eval_inbuilt_function};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -10,13 +11,18 @@ pub fn eval_identifier(identifier: &Expression, env: &Rc<RefCell<Environment>>) 
         Expression::Identifier(i) => {
             let id = env.borrow_mut().get(i.as_str());
             if id.is_some() {
-                id.unwrap()
-            } else {
-                panic!("Did not find the identifer {}", i)
+                return id.unwrap()
+            }
+
+            let inbuilt_func = get_inbuilt_function(i.as_str());
+            if inbuilt_func.is_some() {
+                return inbuilt_func.unwrap()
             }
         }
         _ => panic!("Expected identifier")
     }
+
+    Object::Nil
 }
 
 pub fn eval_prefix_expression(prefix: &Prefix, expression: &Expression, env: &mut Rc<RefCell<Environment>>) -> Object {
@@ -141,10 +147,6 @@ pub fn eval_user_defined_function_call(func_params: &Vec<String>, param_objs: &V
     eval_block_statement(&func_block, &mut func_new_env)
 }
 
-pub fn eval_inbuilt_function_call() -> Object {
-    Object::Nil
-}
-
 pub fn eval_function_call(func_expr: &Box<Expression>, parameters: &Vec<Expression>,
                           env: &mut Rc<RefCell<Environment>>) -> Object {
     let func_obj = eval_expression(func_expr, env);
@@ -157,7 +159,8 @@ pub fn eval_function_call(func_expr: &Box<Expression>, parameters: &Vec<Expressi
                     panic!("Did not find the expected number of arguments for the function");
                 }
                 eval_user_defined_function_call(&params, &param_objs, &block, env)
-            }
+            },
+        Object::FunctionInBuilt(_) => eval_inbuilt_function(&func_obj, &param_objs),
         _ => panic!("Invalid object type {}, expected function object", func_obj)
     }
 }
@@ -377,6 +380,16 @@ mod tests {
                                 z;",
                 val: Object::String(String::from("wxyz")),
             },
+        ];
+
+        check_test_cases(test_cases);
+    }
+
+    #[test]
+    fn test_eval_inbuilt_functions() {
+        let test_cases = vec![
+            TestCase { test_str: "let x = \"cartman\"; len(x)", val: Object::Integer(7) },
+            TestCase { test_str: "len(\"cartman\");", val: Object::Integer(7) },
         ];
 
         check_test_cases(test_cases);
