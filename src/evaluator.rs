@@ -127,6 +127,25 @@ pub fn eval_function_parameters(params: &Vec<Expression>, env: &mut Rc<RefCell<E
     param_objs
 }
 
+pub fn eval_user_defined_function_call(func_params: &Vec<String>, param_objs: &Vec<Object>,
+                                       func_block: &BlockStatement,
+                                       env: &mut Rc<RefCell<Environment>>) -> Object {
+
+    let mut func_new_env = Rc::new(RefCell::new(Environment::extend(env.clone())));
+
+    let mut idx = 0;
+    while idx < param_objs.len() {
+        func_new_env.borrow_mut().set(&*func_params[idx], param_objs[idx].clone());
+        idx += 1;
+    }
+
+    eval_block_statement(&func_block, &mut func_new_env)
+}
+
+pub fn eval_inbuilt_function_call() -> Object {
+    Object::Nil
+}
+
 pub fn eval_function_call(func_expr: &Box<Expression>, parameters: &Vec<Expression>,
                           env: &mut Rc<RefCell<Environment>>) -> Object {
     let mut func_params;
@@ -145,21 +164,12 @@ pub fn eval_function_call(func_expr: &Box<Expression>, parameters: &Vec<Expressi
         _ => panic!("Invalid object type {}, expected function object", func_obj)
     };
 
-
     let param_objs = eval_function_parameters(parameters, env);
     if param_objs.len() != func_params.len() {
         panic!("Did not find the expected number of arguments for the function");
     }
 
-    let mut func_new_env = Rc::new(RefCell::new(Environment::extend(env.clone())));
-
-    let mut idx = 0;
-    while idx < param_objs.len() {
-        func_new_env.borrow_mut().set(&*func_params[idx], param_objs[idx].clone());
-        idx += 1;
-    }
-
-    eval_block_statement(&func_block, &mut func_new_env)
+    eval_user_defined_function_call(&func_params, &param_objs, &func_block, env)
 }
 
 pub fn eval_expression(expr: &Expression, env: &mut Rc<RefCell<Environment>>) -> Object {
