@@ -262,6 +262,7 @@ mod tests {
     let x = \"abcd\";
     let y = \"\";
     let arr = arr[1, 2, 3];
+    let y = arr[x];
     ";
 
 
@@ -361,6 +362,14 @@ mod tests {
             Token::Int(2),
             Token::Comma,
             Token::Int(3),
+            Token::RBracket,
+            Token::Semicolon,
+            Token::Let,
+            Token::Ident(String::from("y")),
+            Token::Assign,
+            Token::Ident(String::from("arr")),
+            Token::LBracket,
+            Token::Ident(String::from("x")),
             Token::RBracket,
             Token::Semicolon,
             Token::Eof,
