@@ -31,6 +31,8 @@ pub enum Token {
     RParen,
     LBrace,
     RBrace,
+    LBracket,
+    RBracket,
 
     // Keywords
     Function,
@@ -72,6 +74,8 @@ fn token_str_repr(token: &Token) -> Box<String> {
         Token::RParen => String::from(")"),
         Token::LBrace => String::from("{"),
         Token::RBrace => String::from("}"),
+        Token::LBracket => String::from("["),
+        Token::RBracket => String::from("]"),
 
         // Keywords
         Token::Function => String::from("fn"),
@@ -138,6 +142,8 @@ impl Lexer {
                 '+' => Token::Plus,
                 '{' => Token::LBrace,
                 '}' => Token::RBrace,
+                '[' => Token::LBracket,
+                ']' => Token::RBracket,
                 '>' => Token::Gt,
                 '<' => Token::Lt,
                 '*' => Token::Asterik,
@@ -255,6 +261,7 @@ mod tests {
     10 != 9;
     let x = \"abcd\";
     let y = \"\";
+    let arr = arr[1, 2, 3];
     ";
 
 
@@ -343,6 +350,18 @@ mod tests {
             Token::Ident(String::from("y")),
             Token::Assign,
             Token::String(String::from("")),
+            Token::Semicolon,
+            Token::Let,
+            Token::Ident(String::from("arr")),
+            Token::Assign,
+            Token::Ident(String::from("arr")),
+            Token::LBracket,
+            Token::Int(1),
+            Token::Comma,
+            Token::Int(2),
+            Token::Comma,
+            Token::Int(3),
+            Token::RBracket,
             Token::Semicolon,
             Token::Eof,
         ];
