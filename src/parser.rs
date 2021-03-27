@@ -330,10 +330,6 @@ impl Parser {
 
         self.expect_current_token(Token::LParen);
 
-        if self.curr_token == Token::RParen {
-            return parameters;
-        }
-
         while self.curr_token != Token::RParen {
             let idf = &self.curr_token;
 
