@@ -11,12 +11,12 @@ pub fn eval_identifier(identifier: &Expression, env: &Rc<RefCell<Environment>>) 
         Expression::Identifier(i) => {
             let id = env.borrow_mut().get(i.as_str());
             if id.is_some() {
-                return id.unwrap()
+                return id.unwrap();
             }
 
             let inbuilt_func = get_inbuilt_function(i.as_str());
             if inbuilt_func.is_some() {
-                return inbuilt_func.unwrap()
+                return inbuilt_func.unwrap();
             }
         }
         _ => panic!("Expected identifier")
@@ -147,6 +147,36 @@ pub fn eval_user_defined_function_call(func_params: &Vec<String>, param_objs: &V
     eval_block_statement(&func_block, &mut func_new_env)
 }
 
+pub fn eval_array_literal(member_expr: &Vec<Expression>, env: &mut Rc<RefCell<Environment>>) -> Object {
+    let mut members = vec![];
+    for mem in member_expr.iter() {
+        members.push(eval_expression(mem, env));
+    }
+    Object::Array(members)
+}
+
+pub fn eval_array_index(arr_expr: &Box<Expression>, idx_expr: &Box<Expression>,
+                        env: &mut Rc<RefCell<Environment>>) -> Object {
+    let mut arr = eval_expression(arr_expr, env);
+    let mut idx = eval_expression(idx_expr, env);
+    match idx {
+        Object::Integer(index) => {
+            match arr {
+                Object::Array(objects) => {
+                    if index as usize > objects.len() - 1 {
+                        panic!("Array index {} greater array size {}", idx, objects.len());
+                    }
+
+                    let obj = objects.get(index as usize).unwrap().clone();
+                    obj
+                }
+                _ => panic!("Expected array found {}", arr),
+            }
+        }
+        _ => panic!("Invalid array index {}", idx),
+    }
+}
+
 pub fn eval_function_call(func_expr: &Box<Expression>, parameters: &Vec<Expression>,
                           env: &mut Rc<RefCell<Environment>>) -> Object {
     let func_obj = eval_expression(func_expr, env);
@@ -159,7 +189,7 @@ pub fn eval_function_call(func_expr: &Box<Expression>, parameters: &Vec<Expressi
                     panic!("Did not find the expected number of arguments for the function");
                 }
                 eval_user_defined_function_call(&params, &param_objs, &block, env)
-            },
+            }
         Object::FunctionInBuilt(_) => eval_inbuilt_function(&func_obj, &param_objs),
         _ => panic!("Invalid object type {}, expected function object", func_obj)
     }
@@ -177,6 +207,8 @@ pub fn eval_expression(expr: &Expression, env: &mut Rc<RefCell<Environment>>) ->
             eval_infix_expression(infix, left, right, env),
         Expression::If(expr, true_block, false_block) =>
             eval_if_expression(expr, true_block, false_block, env),
+        Expression::ArrayLiteral(arr) => eval_array_literal(arr, env),
+        Expression::ArrayIndex(arr, idx) => eval_array_index(arr, idx, env),
         Expression::FunctionLiteral(params, block) =>
             Object::FunctionLiteral(params.clone(), *block.clone(), env.clone()),
         Expression::Call(func, params) => eval_function_call(func, params, env),
@@ -390,6 +422,18 @@ mod tests {
         let test_cases = vec![
             TestCase { test_str: "let x = \"cartman\"; len(x)", val: Object::Integer(7) },
             TestCase { test_str: "len(\"cartman\");", val: Object::Integer(7) },
+        ];
+
+        check_test_cases(test_cases);
+    }
+
+    #[test]
+    fn test_eval_arrays() {
+        let test_cases = vec![
+            TestCase { test_str: "let x = [1, 2, 3]; x[2]", val: Object::Integer(3) },
+            TestCase { test_str: "let x = [1, 2, [1, 3]]; x[2][0]", val: Object::Integer(1) },
+            TestCase { test_str: "let x = [1, \"abc\", 32, 43]; x[1]",
+                val: Object::String(String::from("abc")) },
         ];
 
         check_test_cases(test_cases);
