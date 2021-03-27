@@ -13,6 +13,7 @@ pub enum Object {
     String(String),
     Identifier(String),
     FunctionInBuilt(String),
+    Array(Vec<Object>),
     FunctionLiteral(Vec<String>, BlockStatement, Rc<RefCell<Environment>>),
 }
 
@@ -25,6 +26,7 @@ impl std::fmt::Display for Object {
             Object::Boolean(b) => write!(fmt, "{}", b),
             Object::Identifier(s) => write!(fmt, "{}", s),
             Object::String(s) => write!(fmt, "\"{}\"", s),
+            Object::Array(arr) =>  write!(fmt, "[{}]", arr.iter().map(|a| a.to_string()).collect::<Vec<String>>().join(",")),
             Object::FunctionLiteral(parameters, block, _) => write!(fmt, "({}){{ {} }}",
                                                                     parameters.join(","), block.to_string()),
             _ => panic!("Invalid object {}", self),
