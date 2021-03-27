@@ -107,6 +107,7 @@ impl fmt::Display for Expression {
                 write!(f,"if ({}) {}", exp, true_blk),
             Expression::ArrayLiteral(members) => write!(f, "[{}]",
                                                         members.iter().map(|a| a.to_string()).collect::<Vec<String>>().join(",")),
+            Expression::ArrayIndex(arr, idx) => write!(f, "{}[{}]", arr.to_string(), idx.to_string()),
             Expression::FunctionLiteral(params, block) => write!(f, "fn({}){}", params.join(","), block),
             Expression::Call(exp, params) => write!(f, "{}({})", exp,
                                                     params.iter().map(|a| a.to_string()).collect::<Vec<String>>().join(",")),

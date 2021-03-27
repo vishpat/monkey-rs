@@ -306,7 +306,8 @@ impl Parser {
         Box::new(Expression::Call(left, parameters))
     }
 
-    pub fn parse_array_literal(&mut self) -> Vec<Expression> {
+    pub fn parse_array_literal(&mut self) -> Box<Expression> {
+
         let mut members: Vec<Expression> = vec![];
 
         self.expect_current_token(Token::LBracket);
@@ -321,7 +322,7 @@ impl Parser {
             self.next();
         }
 
-        members
+        Box::new(Expression::ArrayLiteral(members))
     }
 
     pub fn parse_function_parameters(&mut self) -> Vec<String> {
@@ -443,7 +444,7 @@ mod tests {
         let zero = 30 - 30;
         let complex = 11 - 22 + 11 * 22;
         let x = \"abcd\";
-        let arr = [1, 2, 3];
+        let arr = [1, \"abc\", 3];
     ";
 
     #[test]
@@ -475,7 +476,7 @@ mod tests {
                         4 => assert_eq!(stmt.to_string(), "let zero = (30 - 30);"),
                         5 => assert_eq!(stmt.to_string(), "let complex = ((11 - 22) + (11 * 22));"),
                         6 => assert_eq!(stmt.to_string(), "let x = \"abcd\";"),
-                        7 => assert_eq!(stmt.to_string(), "let arr = [1, 2, 3]"),
+                        7 => assert_eq!(stmt.to_string(), "let arr = [1,\"abc\",3];"),
                         _ => panic!("Unexcepted index {}", idx)
                     }
                 },
