@@ -275,6 +275,9 @@ impl Parser {
                 }
                 Token::LParen => {
                     self.parse_function_call(expr)
+                },
+                Token::LBracket => {
+                    self.parse_array_index(expr)
                 }
                 _ => expr
             };
@@ -304,6 +307,13 @@ impl Parser {
     pub fn parse_function_call(&mut self, left: Box<Expression>) -> Box<Expression> {
         let parameters = self.parse_call_parameters();
         Box::new(Expression::Call(left, parameters))
+    }
+
+    pub fn parse_array_index(&mut self, left: Box<Expression>) -> Box<Expression> {
+        self.expect_current_token(Token::LBracket);
+        let index_expr = self.parse_expression(Precedence::Lowest);
+        self.expect_next_token(Token::RBracket);
+        Box::new(Expression::ArrayIndex(left, index_expr))
     }
 
     pub fn parse_array_literal(&mut self) -> Box<Expression> {
@@ -441,13 +451,15 @@ mod tests {
         let complex = 11 - 22 + 11 * 22;
         let x = \"abcd\";
         let arr = [1, \"abc\", 3];
+        let y = [1, 2, 3][1];
+        let z = arr[2 + 3];
     ";
 
     #[test]
     fn test_parser_let_statements() {
         let statements = test_case_statements(TEST_LET_STATEMENTS_STR);
 
-        assert_eq!(statements.len(), 8);
+        assert_eq!(statements.len(), 10);
         let mut idx = 0;
         for stmt in statements.iter() {
             let let_stmt = match stmt {
@@ -473,6 +485,8 @@ mod tests {
                         5 => assert_eq!(stmt.to_string(), "let complex = ((11 - 22) + (11 * 22));"),
                         6 => assert_eq!(stmt.to_string(), "let x = \"abcd\";"),
                         7 => assert_eq!(stmt.to_string(), "let arr = [1,\"abc\",3];"),
+                        8 => assert_eq!(stmt.to_string(), "let y = [1,2,3][1];"),
+                        9 => assert_eq!(stmt.to_string(), "let z = arr[(2 + 3)];"),
                         _ => panic!("Unexcepted index {}", idx)
                     }
                 },
