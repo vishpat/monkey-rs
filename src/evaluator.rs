@@ -4,6 +4,7 @@ use crate::environment::Environment;
 use crate::inbuilt::{get_inbuilt_function, eval_inbuilt_function};
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::collections::{BTreeMap, HashMap};
 
 pub fn eval_identifier(identifier: &Expression, env: &Rc<RefCell<Environment>>) -> Object
 {
@@ -147,6 +148,18 @@ pub fn eval_user_defined_function_call(func_params: &Vec<String>, param_objs: &V
     eval_block_statement(&func_block, &mut func_new_env)
 }
 
+pub fn eval_dict_literal(dict_expr: &Vec<(Expression, Expression)>,
+                         env: &mut Rc<RefCell<Environment>>) -> Object {
+    let mut dict = Vec::new();
+    for (key_expr, val_expr) in dict_expr {
+        let key = eval_expression(key_expr, env);
+        let val = eval_expression(val_expr, env);
+        dict.push((key, val));
+    }
+
+    Object::Dict(dict)
+}
+
 pub fn eval_array_literal(member_expr: &Vec<Expression>, env: &mut Rc<RefCell<Environment>>) -> Object {
     let mut members = vec![];
     for mem in member_expr.iter() {
@@ -155,25 +168,40 @@ pub fn eval_array_literal(member_expr: &Vec<Expression>, env: &mut Rc<RefCell<En
     Object::Array(members)
 }
 
-pub fn eval_index(arr_expr: &Box<Expression>, idx_expr: &Box<Expression>,
-                        env: &mut Rc<RefCell<Environment>>) -> Object {
-    let mut arr = eval_expression(arr_expr, env);
-    let mut idx = eval_expression(idx_expr, env);
+pub fn eval_arr_idx(arr: &Vec<Object>, idx: &Object) -> Object {
     match idx {
         Object::Integer(index) => {
-            match arr {
-                Object::Array(objects) => {
-                    if index as usize > objects.len() - 1 {
-                        panic!("Array index {} greater array size {}", idx, objects.len());
-                    }
-
-                    let obj = objects.get(index as usize).unwrap().clone();
-                    obj
-                }
-                _ => panic!("Expected array found {}", arr),
+            if *index as usize > arr.len() - 1 {
+                panic!("Array index {} greater that array size {}", idx, arr.len());
             }
+
+            let obj = arr.get(*index as usize).unwrap().clone();
+            obj
         }
-        _ => panic!("Invalid array index {}", idx),
+        _ => panic!("Invalid array index {}, expected a positive integer", idx),
+    }
+}
+
+pub fn eval_dict_idx(dict: &Vec<(Object, Object)>, idx: &Object) -> Object {
+    let mut ret_val = Object::Nil;
+    for (k, v) in dict.iter() {
+        if k == idx {
+            ret_val = v.clone();
+            break
+        }
+    }
+    ret_val
+}
+
+pub fn eval_index(container_expr: &Box<Expression>, idx_expr: &Box<Expression>,
+                  env: &mut Rc<RefCell<Environment>>) -> Object {
+    let mut container = eval_expression(container_expr, env);
+    let mut idx = eval_expression(idx_expr, env);
+
+    match container {
+        Object::Array(arr) => eval_arr_idx(&arr, &idx),
+        Object::Dict(dict) => eval_dict_idx(&dict, &idx),
+        _ => panic!("Expected array or dictionary got {}", container.to_string()),
     }
 }
 
@@ -208,6 +236,7 @@ pub fn eval_expression(expr: &Expression, env: &mut Rc<RefCell<Environment>>) ->
         Expression::If(expr, true_block, false_block) =>
             eval_if_expression(expr, true_block, false_block, env),
         Expression::ArrayLiteral(arr) => eval_array_literal(arr, env),
+        Expression::DictionaryLiteral(dict) => eval_dict_literal(dict, env),
         Expression::Index(arr, idx) => eval_index(arr, idx, env),
         Expression::FunctionLiteral(params, block) =>
             Object::FunctionLiteral(params.clone(), *block.clone(), env.clone()),
@@ -432,8 +461,24 @@ mod tests {
         let test_cases = vec![
             TestCase { test_str: "let x = [1, 2, 3]; x[2]", val: Object::Integer(3) },
             TestCase { test_str: "let x = [1, 2, [1, 3]]; x[2][0]", val: Object::Integer(1) },
-            TestCase { test_str: "let x = [1, \"abc\", 32, 43]; x[1]",
-                val: Object::String(String::from("abc")) },
+            TestCase {
+                test_str: "let x = [1, \"abc\", 32, 43]; x[1]",
+                val: Object::String(String::from("abc")),
+            },
+        ];
+
+        check_test_cases(test_cases);
+    }
+
+    #[test]
+    fn test_eval_dict() {
+        let test_cases = vec![
+            TestCase { test_str: "let x = {1: 2, 2: 3, 3: 4}; x[2]", val: Object::Integer(3)},
+            TestCase { test_str: "{1: 2, 2: 3, 3: 4}[2]", val: Object::Integer(3)},
+            TestCase { test_str: "let x = {1: 2, \"test\": 3, 3: 4}; x[\"test\"]",
+                val: Object::Integer(3)},
+            TestCase { test_str: "let s = 3; let x = {1: 2, \"test\": 3, 3: (2*10)}; x[s]",
+                val: Object::Integer(20)},
         ];
 
         check_test_cases(test_cases);
