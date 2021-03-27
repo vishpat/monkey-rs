@@ -155,7 +155,7 @@ pub fn eval_array_literal(member_expr: &Vec<Expression>, env: &mut Rc<RefCell<En
     Object::Array(members)
 }
 
-pub fn eval_array_index(arr_expr: &Box<Expression>, idx_expr: &Box<Expression>,
+pub fn eval_index(arr_expr: &Box<Expression>, idx_expr: &Box<Expression>,
                         env: &mut Rc<RefCell<Environment>>) -> Object {
     let mut arr = eval_expression(arr_expr, env);
     let mut idx = eval_expression(idx_expr, env);
@@ -208,7 +208,7 @@ pub fn eval_expression(expr: &Expression, env: &mut Rc<RefCell<Environment>>) ->
         Expression::If(expr, true_block, false_block) =>
             eval_if_expression(expr, true_block, false_block, env),
         Expression::ArrayLiteral(arr) => eval_array_literal(arr, env),
-        Expression::ArrayIndex(arr, idx) => eval_array_index(arr, idx, env),
+        Expression::Index(arr, idx) => eval_index(arr, idx, env),
         Expression::FunctionLiteral(params, block) =>
             Object::FunctionLiteral(params.clone(), *block.clone(), env.clone()),
         Expression::Call(func, params) => eval_function_call(func, params, env),

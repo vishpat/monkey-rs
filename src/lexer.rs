@@ -70,7 +70,7 @@ fn token_str_repr(token: &Token) -> Box<String> {
         // Delimiters
         Token::Comma => String::from(","),
         Token::Semicolon => String::from(";"),
-        Token::Colon => String::from(','),
+        Token::Colon => String::from(':'),
 
         Token::LParen => String::from("("),
         Token::RParen => String::from(")"),
