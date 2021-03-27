@@ -479,6 +479,8 @@ mod tests {
                 val: Object::Integer(3)},
             TestCase { test_str: "let s = 3; let x = {1: 2, \"test\": 3, 3: (2*10)}; x[s]",
                 val: Object::Integer(20)},
+            TestCase { test_str: "let s = \"test\"; let x = {1: 2, \"test\": \"res\", 3: (2*10)}; x[s]",
+                val: Object::String(String::from("res"))},
         ];
 
         check_test_cases(test_cases);
