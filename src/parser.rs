@@ -13,6 +13,7 @@ pub enum Precedence {
     Product,
     Prefix,
     Call,
+    Index,
 }
 
 #[derive(Debug)]
@@ -64,6 +65,7 @@ impl Parser {
             Token::Asterik => Precedence::Product,
             Token::Slash => Precedence::Product,
             Token::LParen => Precedence::Call,
+            Token::LBracket => Precedence::Index,
             _ => Precedence::Lowest,
         }
     }
@@ -244,6 +246,7 @@ impl Parser {
             Token::LParen => self.parse_group_expression(),
             Token::If => self.parse_if_expression(),
             Token::Function => self.parse_function(),
+            Token::LBracket => self.parse_array_literal(),
             _ => panic!("Invalid token in expression {}, next token {}", t, self.next_token.clone())
         };
 
@@ -272,6 +275,9 @@ impl Parser {
                 }
                 Token::LParen => {
                     self.parse_function_call(expr)
+                },
+                Token::LBracket => {
+                    self.parse_array_index(expr)
                 }
                 _ => expr
             };
@@ -303,14 +309,36 @@ impl Parser {
         Box::new(Expression::Call(left, parameters))
     }
 
+    pub fn parse_array_index(&mut self, left: Box<Expression>) -> Box<Expression> {
+        self.expect_current_token(Token::LBracket);
+        let index_expr = self.parse_expression(Precedence::Lowest);
+        self.expect_next_token(Token::RBracket);
+        Box::new(Expression::ArrayIndex(left, index_expr))
+    }
+
+    pub fn parse_array_literal(&mut self) -> Box<Expression> {
+
+        let mut members: Vec<Expression> = vec![];
+
+        self.expect_current_token(Token::LBracket);
+        while self.curr_token != Token::RBracket {
+            let member = self.parse_expression(Precedence::Lowest);
+            members.push(*member);
+
+            if self.peek() == Token::Comma {
+                self.next();
+            }
+
+            self.next();
+        }
+
+        Box::new(Expression::ArrayLiteral(members))
+    }
+
     pub fn parse_function_parameters(&mut self) -> Vec<String> {
         let mut parameters: Vec<String> = vec![];
 
         self.expect_current_token(Token::LParen);
-
-        if self.curr_token == Token::RParen {
-            return parameters;
-        }
 
         while self.curr_token != Token::RParen {
             let idf = &self.curr_token;
@@ -422,13 +450,16 @@ mod tests {
         let zero = 30 - 30;
         let complex = 11 - 22 + 11 * 22;
         let x = \"abcd\";
+        let arr = [1, \"abc\", 3];
+        let y = [1, 2, 3][1];
+        let z = arr[2 + 3];
     ";
 
     #[test]
     fn test_parser_let_statements() {
         let statements = test_case_statements(TEST_LET_STATEMENTS_STR);
 
-        assert_eq!(statements.len(), 7);
+        assert_eq!(statements.len(), 10);
         let mut idx = 0;
         for stmt in statements.iter() {
             let let_stmt = match stmt {
@@ -453,6 +484,9 @@ mod tests {
                         4 => assert_eq!(stmt.to_string(), "let zero = (30 - 30);"),
                         5 => assert_eq!(stmt.to_string(), "let complex = ((11 - 22) + (11 * 22));"),
                         6 => assert_eq!(stmt.to_string(), "let x = \"abcd\";"),
+                        7 => assert_eq!(stmt.to_string(), "let arr = [1,\"abc\",3];"),
+                        8 => assert_eq!(stmt.to_string(), "let y = [1,2,3][1];"),
+                        9 => assert_eq!(stmt.to_string(), "let z = arr[(2 + 3)];"),
                         _ => panic!("Unexcepted index {}", idx)
                     }
                 },

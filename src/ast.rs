@@ -58,6 +58,7 @@ pub enum Infix {
     Minus,
     Asterisk,
     Slash,
+    LBracket,
 }
 
 impl fmt::Display for Infix {
@@ -71,6 +72,7 @@ impl fmt::Display for Infix {
             Infix::Minus => write!(f, "-"),
             Infix::Asterisk => write!(f, "*"),
             Infix::Slash => write!(f, "/"),
+            Infix::LBracket => write!(f, "["),
         }
     }
 }
@@ -86,6 +88,8 @@ pub enum Expression {
     Infix(Infix, Box<Expression>, Box<Expression>),
     If(Box<Expression>, Box<BlockStatement>, Option<Box<BlockStatement>>),
     FunctionLiteral(Vec<String>, Box<BlockStatement>),
+    ArrayLiteral(Vec<Expression>),
+    ArrayIndex(Box<Expression>, Box<Expression>),
     Call(Box<Expression>, Vec<Expression>),
 }
 
@@ -103,6 +107,9 @@ impl fmt::Display for Expression {
                 write!(f,"if ({}) {} else {}", exp, true_blk, false_blk),
             Expression::If(exp, true_blk, None) =>
                 write!(f,"if ({}) {}", exp, true_blk),
+            Expression::ArrayLiteral(members) => write!(f, "[{}]",
+                                                        members.iter().map(|a| a.to_string()).collect::<Vec<String>>().join(",")),
+            Expression::ArrayIndex(arr, idx) => write!(f, "{}[{}]", arr.to_string(), idx.to_string()),
             Expression::FunctionLiteral(params, block) => write!(f, "fn({}){}", params.join(","), block),
             Expression::Call(exp, params) => write!(f, "{}({})", exp,
                                                     params.iter().map(|a| a.to_string()).collect::<Vec<String>>().join(",")),
