@@ -1,0 +1,19 @@
+let str = "monkey-rs";
+len(str);
+
+let x = 10;
+let y = 20;
+
+let sum = fn(a, b){ a + b;};
+sum(x, y);
+
+let arr = [1, 2, 3, 4];
+sum(arr[0], arr[3]);
+
+let dict = {"one": 1, "two": 2, "three": 3};
+sum(dict["one"], dict["two"]);
+
+let fact = fn(x){ if (x > 1) { x * fact(x - 1);} else {1}};
+fact(10);
+
+exit
