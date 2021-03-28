@@ -150,11 +150,11 @@ pub fn eval_user_defined_function_call(func_params: &Vec<String>, param_objs: &V
 
 pub fn eval_dict_literal(dict_expr: &Vec<(Expression, Expression)>,
                          env: &mut Rc<RefCell<Environment>>) -> Object {
-    let mut dict = Vec::new();
+    let mut dict = HashMap::new();
     for (key_expr, val_expr) in dict_expr {
         let key = eval_expression(key_expr, env);
         let val = eval_expression(val_expr, env);
-        dict.push((key, val));
+        dict.insert(key, val);
     }
 
     Object::Dict(dict)
@@ -182,13 +182,10 @@ pub fn eval_arr_idx(arr: &Vec<Object>, idx: &Object) -> Object {
     }
 }
 
-pub fn eval_dict_idx(dict: &Vec<(Object, Object)>, idx: &Object) -> Object {
+pub fn eval_dict_idx(dict: &HashMap<Object, Object>, idx: &Object) -> Object {
     let mut ret_val = Object::Nil;
-    for (k, v) in dict.iter() {
-        if k == idx {
-            ret_val = v.clone();
-            break
-        }
+    if dict.contains_key(idx) {
+        ret_val = dict.get(idx).unwrap().clone();
     }
     ret_val
 }
