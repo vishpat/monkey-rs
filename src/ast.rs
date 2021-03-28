@@ -1,8 +1,5 @@
-use crate::lexer::Token;
 use std::fmt;
 use std::fmt::Formatter;
-use std::collections::{HashMap, BTreeMap};
-use std::ptr::write_bytes;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Program {

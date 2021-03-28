@@ -15,7 +15,7 @@ use crate::environment::Environment;
 
 fn main() {
 
-    let mut reader = Interface::new("monkey-rs").unwrap();
+    let reader = Interface::new("monkey-rs").unwrap();
     let mut env = Rc::new(RefCell::new(Environment::new()));
 
     reader.set_prompt("monkey-rs> ").unwrap();

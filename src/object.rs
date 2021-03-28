@@ -3,7 +3,7 @@ use crate::ast::BlockStatement;
 use crate::environment::Environment;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::collections::{HashMap, BTreeMap};
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
 #[derive(Debug, PartialEq, Clone)]

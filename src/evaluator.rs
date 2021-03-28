@@ -4,7 +4,7 @@ use crate::environment::Environment;
 use crate::inbuilt::{get_inbuilt_function, eval_inbuilt_function};
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
 pub fn eval_identifier(identifier: &Expression, env: &Rc<RefCell<Environment>>) -> Object
 {
@@ -51,7 +51,7 @@ pub fn eval_infix_expression(infix: &Infix, left: &Expression, right: &Expressio
     match left_obj {
         Object::Integer(i) => {
             let left_int = i;
-            let mut right_int;
+            let right_int;
             match right_obj {
                 Object::Integer(i) => {
                     right_int = i;
@@ -72,7 +72,7 @@ pub fn eval_infix_expression(infix: &Infix, left: &Expression, right: &Expressio
         }
         Object::String(s) => {
             let left_str = s;
-            let mut right_str;
+            let right_str;
             match right_obj {
                 Object::String(s) => {
                     right_str = s;
@@ -192,8 +192,8 @@ pub fn eval_dict_idx(dict: &HashMap<Object, Object>, idx: &Object) -> Object {
 
 pub fn eval_index(container_expr: &Box<Expression>, idx_expr: &Box<Expression>,
                   env: &mut Rc<RefCell<Environment>>) -> Object {
-    let mut container = eval_expression(container_expr, env);
-    let mut idx = eval_expression(idx_expr, env);
+    let container = eval_expression(container_expr, env);
+    let idx = eval_expression(idx_expr, env);
 
     match container {
         Object::Array(arr) => eval_arr_idx(&arr, &idx),
@@ -208,7 +208,7 @@ pub fn eval_function_call(func_expr: &Box<Expression>, parameters: &Vec<Expressi
     let param_objs = eval_function_parameters(parameters, env);
 
     match func_obj {
-        Object::FunctionLiteral(params, block, func_env) =>
+        Object::FunctionLiteral(params, block, _func_env) =>
             {
                 if param_objs.len() != params.len() {
                     panic!("Did not find the expected number of arguments for the function");
@@ -223,7 +223,7 @@ pub fn eval_function_call(func_expr: &Box<Expression>, parameters: &Vec<Expressi
 pub fn eval_expression(expr: &Expression, env: &mut Rc<RefCell<Environment>>) -> Object {
     match expr {
         Expression::IntegerLiteral(i) => Object::Integer(*i),
-        Expression::Identifier(s) => eval_identifier(expr, env),
+        Expression::Identifier(_s) => eval_identifier(expr, env),
         Expression::String(s) => Object::String(s.to_string()),
         Expression::Boolean(b) => Object::Boolean(*b),
         Expression::Prefix(prefix, expr) =>
@@ -238,7 +238,6 @@ pub fn eval_expression(expr: &Expression, env: &mut Rc<RefCell<Environment>>) ->
         Expression::FunctionLiteral(params, block) =>
             Object::FunctionLiteral(params.clone(), *block.clone(), env.clone()),
         Expression::Call(func, params) => eval_function_call(func, params, env),
-        _ => Object::Nil
     }
 }
 
@@ -268,13 +267,11 @@ pub fn eval_program(program: &Program, env: &mut Rc<RefCell<Environment>>) -> Ob
 
 #[cfg(test)]
 mod tests {
-    use crate::lexer::{Lexer, Token};
+    use crate::lexer::Lexer;
     use crate::parser::Parser;
-    use std::any::Any;
     use crate::object::Object;
     use crate::environment::Environment;
     use crate::evaluator::*;
-    use std::process::id;
 
     fn test_eval_program(input: &str) -> Object {
         let mut env = Rc::new(RefCell::new(Environment::new()));

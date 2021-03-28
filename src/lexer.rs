@@ -108,7 +108,7 @@ impl Lexer {
 
         let size = input.len();
         let mut index = 0;
-        let mut string_start = false;
+        let string_start = false;
 
         while index < size {
 
@@ -123,7 +123,7 @@ impl Lexer {
 
             let start = index;
 
-            let mut token = match input.chars().nth(index).unwrap() {
+            let token = match input.chars().nth(index).unwrap() {
                 '=' => {
                     if size - index > 1 {
                         match input.chars().nth(index + 1).unwrap() {
@@ -231,10 +231,6 @@ impl Lexer {
 
     pub fn next(&mut self) -> Token {
         self.tokens.pop().unwrap_or(Token::Eof)
-    }
-
-    pub fn peek(&mut self) -> Token {
-        self.tokens.last().cloned().unwrap_or(Token::Eof)
     }
 }
 
@@ -394,7 +390,6 @@ mod tests {
         ];
 
         let mut lexer = Lexer::new(TEST_STR);
-        let mut idx = 1;
 
         for test_token in test_token_vec.iter() {
             let token = lexer.next();

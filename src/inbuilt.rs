@@ -33,5 +33,4 @@ pub fn eval_inbuilt_function(func_obj: &Object, params: &Vec<Object>) -> Object 
         }
         _ => panic!("Excepted a function object but found {}", func_obj)
     }
-    Object::Nil
 }

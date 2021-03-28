@@ -1,9 +1,7 @@
 use crate::lexer::{Lexer, Token};
 use crate::ast::*;
-use std::error::Error;
 use std::fmt;
-use std::fmt::{Debug, Display};
-use std::collections::BTreeMap;
+use std::fmt::Debug;
 
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd)]
 pub enum Precedence {
@@ -47,10 +45,6 @@ impl Parser {
         self.curr_token.clone()
     }
 
-    pub fn is_curr_token(&self, token: Token) -> bool {
-        self.curr_token == token
-    }
-
     pub fn peek(&self) -> Token {
         self.next_token.clone()
     }
@@ -69,10 +63,6 @@ impl Parser {
             Token::LBracket => Precedence::Index,
             _ => Precedence::Lowest,
         }
-    }
-
-    pub fn curr_precedence(&self) -> Precedence {
-        self.precedence(&self.curr_token)
     }
 
     pub fn peek_precedence(&self) -> Precedence {
@@ -236,12 +226,12 @@ impl Parser {
     /// [here](https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing)
     ///
     fn parse_expression(&mut self, precedence: Precedence) -> Box<Expression> {
-        let mut t = self.curr_token.clone();
+        let t = self.curr_token.clone();
         // Prefix
         let mut expr: Box<Expression> = match t {
-            Token::Ident(s) => self.parse_identifier(),
-            Token::Int(s) => self.parse_integer(),
-            Token::String(s) => self.parse_string(),
+            Token::Ident(_s) => self.parse_identifier(),
+            Token::Int(_s) => self.parse_integer(),
+            Token::String(_s) => self.parse_string(),
             Token::True | Token::False => self.parse_boolean(),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::LParen => self.parse_group_expression(),
@@ -421,7 +411,6 @@ impl Parser {
 mod tests {
     use crate::lexer::{Lexer, Token};
     use crate::parser::Parser;
-    use std::any::Any;
     use crate::ast::{Statement, Prefix};
     use crate::ast::Expression;
 
@@ -491,8 +480,8 @@ mod tests {
         assert_eq!(statements.len(), 12);
         let mut idx = 0;
         for stmt in statements.iter() {
-            let let_stmt = match stmt {
-                Statement::Let(s, expr) => {
+            let _let_stmt = match stmt {
+                Statement::Let(_s, expr) => {
                     match idx {
                         0 => {
                             assert_eq!(stmt.to_string(), "let five = 5;");
@@ -541,7 +530,7 @@ mod tests {
 
         let mut idx = 0;
         for stmt in statements.iter() {
-            let ret_stmt = match stmt {
+            let _ret_stmt = match stmt {
                 Statement::Return(expr) => {
                     match idx {
                         0 => {
@@ -574,7 +563,7 @@ mod tests {
 
         let mut idx = 0;
         for stmt in statements.iter() {
-            let prefix_expr= match stmt {
+            let _prefix_expr= match stmt {
                 Statement::Expression(expr) => {
                     match &**expr {
                        Expression::Prefix(prefix, expr2) => match idx {
@@ -611,7 +600,7 @@ mod tests {
         let mut idx = 0;
         for stmt in statements.iter() {
             match stmt {
-                Statement::Let(s, expr) => {
+                Statement::Let(_s, _expr) => {
                     match idx {
                         0 => assert_eq!(format!("{}", stmt), "let x = (x + y);"),
                         1 => assert_eq!(format!("{}", stmt), "let x = ((x + y) + (l + k));"),
@@ -619,7 +608,7 @@ mod tests {
                         _ => panic!("Unexcepted index {}", idx)
                     }
                 }
-                _ => panic!("Expected let statement found {}")
+                _ => panic!("Expected let statement found {}", stmt)
             }
 
             idx += 1;
@@ -637,7 +626,7 @@ mod tests {
         let statements = test_case_statements(TEST_IF_NO_ELSE_STR);
 
         assert_eq!(statements.len(), 1);
-        let mut stmt = &statements[0];
+        let stmt = &statements[0];
         match stmt {
             Statement::Expression(expr) => {
                 match &**expr {
@@ -668,7 +657,7 @@ mod tests {
         let statements = test_case_statements(TEST_IF_ELSE_STR);
         assert_eq!(statements.len(), 1);
 
-        let mut stmt = &statements[0];
+        let stmt = &statements[0];
         match stmt {
             Statement::Expression(expr) => {
                 match &**expr {
@@ -702,7 +691,7 @@ mod tests {
     fn test_parser_function() {
         let statements = test_case_statements(TEST_FUNCTION_STR1);
         assert_eq!(statements.len(), 2);
-        let mut stmt = &statements[0];
+        let stmt = &statements[0];
         match stmt {
             Statement::Expression(expr) => {
                 match &**expr {
@@ -728,7 +717,7 @@ mod tests {
     fn test_parser_function_no_parameters() {
         let statements = test_case_statements(TEST_FUNCTION_STR2);
         assert_eq!(statements.len(), 1);
-        let mut stmt = &statements[0];
+        let stmt = &statements[0];
         match stmt {
             Statement::Expression(expr) => {
                 match &**expr {
@@ -753,7 +742,7 @@ mod tests {
     fn test_parser_function_expression() {
         let statements = test_case_statements(TEST_FUNCTION_STR3);
         assert_eq!(statements.len(), 1);
-        let mut stmt = &statements[0];
+        let stmt = &statements[0];
         match stmt {
             Statement::Expression(expr) => {
                 println!("{}", expr);
@@ -774,7 +763,6 @@ mod tests {
         let statements = test_case_statements(TEST_FUNCTION_CALL_STR);
         assert_eq!(statements.len(), 4);
 
-        let mut idx = 0;
         for idx in 0..statements.len() {
             match &statements[idx] {
                 Statement::Expression(expr) => {
@@ -822,7 +810,6 @@ mod tests {
         let statements = test_case_statements(TEST_STRINGS_STR);
 
         assert_eq!(statements.len(), 1);
-        let mut idx = 0;
         for stmt in statements.iter() {
             match stmt {
                 Statement::Expression(expr) => {
@@ -833,7 +820,6 @@ mod tests {
                 },
                 _ => panic!("Expected a string expression"),
             }
-            idx += 1;
         }
     }
 }
