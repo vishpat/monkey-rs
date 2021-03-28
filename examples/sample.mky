@@ -1,5 +1,10 @@
-let str = "monkey-rs";
-len(str);
+let s1 = "str1";
+let s2 = "str2";
+
+let s3 = s1 + " - " + s2;
+s3;
+len(s3); 
+
 
 let x = 10;
 let y = 20;
