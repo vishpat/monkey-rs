@@ -3,6 +3,7 @@ use crate::ast::*;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Display};
+use std::collections::BTreeMap;
 
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd)]
 pub enum Precedence {
@@ -247,11 +248,13 @@ impl Parser {
             Token::If => self.parse_if_expression(),
             Token::Function => self.parse_function(),
             Token::LBracket => self.parse_array_literal(),
+            Token::LBrace => self.parse_dict_literal(),
             _ => panic!("Invalid token in expression {}, next token {}", t, self.next_token.clone())
         };
 
         // Infix
-        while self.peek() != Token::Semicolon && self.peek_precedence() > precedence {
+        while self.peek() != Token::Semicolon && self.peek() != Token::Colon &&
+            self.peek_precedence() > precedence {
             let token = self.next();
 
             expr = match token {
@@ -313,7 +316,7 @@ impl Parser {
         self.expect_current_token(Token::LBracket);
         let index_expr = self.parse_expression(Precedence::Lowest);
         self.expect_next_token(Token::RBracket);
-        Box::new(Expression::ArrayIndex(left, index_expr))
+        Box::new(Expression::Index(left, index_expr))
     }
 
     pub fn parse_array_literal(&mut self) -> Box<Expression> {
@@ -333,6 +336,30 @@ impl Parser {
         }
 
         Box::new(Expression::ArrayLiteral(members))
+    }
+
+    pub fn parse_dict_literal(&mut self) -> Box<Expression> {
+
+        let mut key_values= vec![];
+
+        self.expect_current_token(Token::LBrace);
+        while self.curr_token != Token::RBrace {
+            let key = self.parse_expression(Precedence::Lowest);
+
+            self.expect_next_token(Token::Colon);
+            self.next();
+
+            let val = self.parse_expression(Precedence::Lowest);
+            key_values.push((*key, *val));
+
+            if self.peek() == Token::Comma {
+                self.next();
+            }
+
+            self.next();
+        }
+
+        Box::new(Expression::DictionaryLiteral(key_values))
     }
 
     pub fn parse_function_parameters(&mut self) -> Vec<String> {
@@ -453,13 +480,15 @@ mod tests {
         let arr = [1, \"abc\", 3];
         let y = [1, 2, 3][1];
         let z = arr[2 + 3];
+        let dict = {1:3};
+        let dict = {1:3, 2:4, 3: 3 + 2, 4: \"test\"};
     ";
 
     #[test]
     fn test_parser_let_statements() {
         let statements = test_case_statements(TEST_LET_STATEMENTS_STR);
 
-        assert_eq!(statements.len(), 10);
+        assert_eq!(statements.len(), 12);
         let mut idx = 0;
         for stmt in statements.iter() {
             let let_stmt = match stmt {
@@ -487,6 +516,8 @@ mod tests {
                         7 => assert_eq!(stmt.to_string(), "let arr = [1,\"abc\",3];"),
                         8 => assert_eq!(stmt.to_string(), "let y = [1,2,3][1];"),
                         9 => assert_eq!(stmt.to_string(), "let z = arr[(2 + 3)];"),
+                        10 => assert_eq!(stmt.to_string(), "let dict = {1:3};"),
+                        11 => assert_eq!(stmt.to_string(), "let dict = {1:3,2:4,3:(3 + 2),4:\"test\"};"),
                         _ => panic!("Unexcepted index {}", idx)
                     }
                 },

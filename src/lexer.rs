@@ -25,6 +25,7 @@ pub enum Token {
 
     // Delimiters
     Comma,
+    Colon,
     Semicolon,
 
     LParen,
@@ -69,6 +70,7 @@ fn token_str_repr(token: &Token) -> Box<String> {
         // Delimiters
         Token::Comma => String::from(","),
         Token::Semicolon => String::from(";"),
+        Token::Colon => String::from(':'),
 
         Token::LParen => String::from("("),
         Token::RParen => String::from(")"),
@@ -136,6 +138,7 @@ impl Lexer {
                     }
                 }
                 ';' => Token::Semicolon,
+                ':' => Token::Colon,
                 '(' => Token::LParen,
                 ')' => Token::RParen,
                 ',' => Token::Comma,
@@ -259,10 +262,12 @@ mod tests {
 
     10 == 10;
     10 != 9;
+
     let x = \"abcd\";
     let y = \"\";
     let arr = arr[1, 2, 3];
     let y = arr[x];
+    let x = {z: \"vishal\", y: 1};
     ";
 
 
@@ -371,6 +376,19 @@ mod tests {
             Token::LBracket,
             Token::Ident(String::from("x")),
             Token::RBracket,
+            Token::Semicolon,
+            Token::Let,
+            Token::Ident(String::from("x")),
+            Token::Assign,
+            Token::LBrace,
+            Token::Ident(String::from("z")),
+            Token::Colon,
+            Token::String(String::from("vishal")),
+            Token::Comma,
+            Token::Ident(String::from("y")),
+            Token::Colon,
+            Token::Int(1),
+            Token::RBrace,
             Token::Semicolon,
             Token::Eof,
         ];

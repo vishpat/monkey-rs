@@ -1,6 +1,8 @@
 use crate::lexer::Token;
 use std::fmt;
 use std::fmt::Formatter;
+use std::collections::{HashMap, BTreeMap};
+use std::ptr::write_bytes;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Program {
@@ -88,8 +90,9 @@ pub enum Expression {
     Infix(Infix, Box<Expression>, Box<Expression>),
     If(Box<Expression>, Box<BlockStatement>, Option<Box<BlockStatement>>),
     FunctionLiteral(Vec<String>, Box<BlockStatement>),
+    DictionaryLiteral(Vec<(Expression, Expression)>),
     ArrayLiteral(Vec<Expression>),
-    ArrayIndex(Box<Expression>, Box<Expression>),
+    Index(Box<Expression>, Box<Expression>),
     Call(Box<Expression>, Vec<Expression>),
 }
 
@@ -107,9 +110,22 @@ impl fmt::Display for Expression {
                 write!(f,"if ({}) {} else {}", exp, true_blk, false_blk),
             Expression::If(exp, true_blk, None) =>
                 write!(f,"if ({}) {}", exp, true_blk),
+            Expression::DictionaryLiteral(key_values) => {
+                let mut str = String::new();
+                str.push_str("{");
+                for (k, v) in key_values{
+                    str.push_str(format!("{}:{},", k, v).as_str());
+                }
+
+                if str.ends_with(',') {
+                    str.pop();
+                }
+                str.push_str("}");
+                write!(f, "{}", str)
+            },
             Expression::ArrayLiteral(members) => write!(f, "[{}]",
                                                         members.iter().map(|a| a.to_string()).collect::<Vec<String>>().join(",")),
-            Expression::ArrayIndex(arr, idx) => write!(f, "{}[{}]", arr.to_string(), idx.to_string()),
+            Expression::Index(arr, idx) => write!(f, "{}[{}]", arr.to_string(), idx.to_string()),
             Expression::FunctionLiteral(params, block) => write!(f, "fn({}){}", params.join(","), block),
             Expression::Call(exp, params) => write!(f, "{}({})", exp,
                                                     params.iter().map(|a| a.to_string()).collect::<Vec<String>>().join(",")),
