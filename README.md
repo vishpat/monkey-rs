@@ -4,7 +4,7 @@ Another interpreter for the [monkey](https://interpreterbook.com/) programming l
 
 # Demo
 ```
-cargo run
+cargo build
 ```
 
 
