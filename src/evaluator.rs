@@ -441,6 +441,19 @@ mod tests {
     }
 
     #[test]
+    fn test_closures() {
+        let test_cases = vec![
+            TestCase {
+                test_str: "let adder = fn(x){fn(x,y) { x + y; };};\
+                           let a2 = adder(2);
+                           a2(10);",
+                val: Object::Integer(12),
+            },
+        ];
+    }
+
+
+    #[test]
     fn test_eval_inbuilt_functions() {
         let test_cases = vec![
             TestCase { test_str: "let x = \"cartman\"; len(x)", val: Object::Integer(7) },
