@@ -208,12 +208,12 @@ pub fn eval_function_call(func_expr: &Box<Expression>, parameters: &Vec<Expressi
     let param_objs = eval_function_parameters(parameters, env);
 
     match func_obj {
-        Object::FunctionLiteral(params, block, _func_env) =>
+        Object::FunctionLiteral(params, block, mut func_env) =>
             {
                 if param_objs.len() != params.len() {
                     panic!("Did not find the expected number of arguments for the function");
                 }
-                eval_user_defined_function_call(&params, &param_objs, &block, env)
+                eval_user_defined_function_call(&params, &param_objs, &block, &mut func_env)
             }
         Object::FunctionInBuilt(_) => eval_inbuilt_function(&func_obj, &param_objs),
         _ => panic!("Invalid object type {}, expected function object", func_obj)
