@@ -55,7 +55,7 @@ impl std::fmt::Display for Object {
                 str.push_str("}");
                 write!(fmt, "{}", str)
             },
-            Object::FunctionLiteral(parameters, block, _) => write!(fmt, "({}){{ {} }}",
+            Object::FunctionLiteral(parameters, block, _) => write!(fmt, "fn({}){{ {} }}",
                                                                     parameters.join(","), block.to_string()),
             _ => panic!("Invalid object {}", self),
         }
